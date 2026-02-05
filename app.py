@@ -641,14 +641,14 @@ def main():
     </html>
     """
                 # 親側にCSSを注入して、iframe自体の高さを動的に制御する（クロスオリジン対策）
-                st.markdown(f\"\"\"
+                st.markdown(f"""
                 <style>
                     iframe[title="st.components.v1.html"] {{
                         height: calc(100vh - 300px) !important;
                         min-height: 400px !important;
                     }}
                 </style>
-                \"\"\", unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
                 
                 components.html(html_content, height=1200, scrolling=False)
         else:
