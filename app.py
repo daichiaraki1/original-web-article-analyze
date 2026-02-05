@@ -455,12 +455,6 @@ def main():
                     # 1. Left (Source)
                     if i < len_src:
                         p = src_article.structured_html_parts[i]
-                        # Use raw text or build HTML if needed. Previously used customized logic.
-                        # For consistency with previous implementation:
-                        # But wait, original code used p['tag'] to wrap.
-                        # I should respect that or simplify.
-                        # Existing: l_content = f"<{p['tag']}>{p['text']}</{p['tag']}>"
-                        # But previous revision just dumped text? No, it used tags.
                         l_content = f"<{p['tag']}>{p['text']}</{p['tag']}>"
                     else:
                         l_content = ""
@@ -470,11 +464,8 @@ def main():
                     # 2. Center (Trans 1 or Compare Article)
                     if i < len_t1:
                         p = trans_data[i]
-                        # trans_data is dict list with 'text', 'engine', 'tag'
                         t_tag = p.get('tag', 'p')
                         t_text = p.get('text', '')
-                        # engine = p.get('engine', '') # Engine label per block is noisy, removed or kept?
-                        # New design: Header has engine name. Blocks just text.
                         c_content = f"<{t_tag}>{t_text}</{t_tag}>"
                     else:
                         c_content = ""
@@ -585,37 +576,40 @@ def main():
         <script>
             (function() {{
                 const syncRowHeights = () => {{
-                    console.log("Syncing row heights...");
-                    // Find max index based on src rows
                     const srcRows = document.querySelectorAll('[id^="src-row-"]');
                     if (srcRows.length === 0) return;
 
                     srcRows.forEach(srcEl => {{
-                        const idStr = srcEl.id; // src-row-X
+                        const idStr = srcEl.id;
                         const idx = idStr.replace('src-row-', '');
-                        
                         const elSrc = document.getElementById(`src-row-${{idx}}`);
                         const elT1 = document.getElementById(`trans1-row-${{idx}}`);
                         const elT2 = document.getElementById(`trans2-row-${{idx}}`);
-                        
                         const elements = [elSrc, elT1, elT2].filter(el => el);
-                        
-                        // Reset to auto to measure natural height
                         elements.forEach(el => el.style.minHeight = 'auto');
-                        
-                        // Find max height
                         let maxHeight = 0;
                         elements.forEach(el => {{
                             const h = el.getBoundingClientRect().height;
                             if (h > maxHeight) maxHeight = h;
                         }});
-                        
-                        // Apply max height
                         elements.forEach(el => el.style.minHeight = maxHeight + 'px');
                     }});
                 }};
 
-                // Sync Scrolling
+                // Dynamic Height Sensing from Parent
+                const adjustToViewport = () => {{
+                    try {{
+                        // Streamlit Cloudではクロスオリジン制限があるため、失敗した場合は100vhに頼る
+                        const availableHeight = window.parent.innerHeight - 250;
+                        if (availableHeight > 200) {{
+                            document.querySelector('.unified-container').style.height = availableHeight + 'px';
+                        }}
+                    }} catch (e) {{
+                        // フォールバック: 特殊なCSSを使わず、親側のCSSインジェクションに任せる
+                        document.querySelector('.unified-container').style.height = 'calc(100vh - 20px)';
+                    }}
+                }};
+
                 const cols = document.querySelectorAll('.trans-column-wrapper');
                 let isSyncing = false;
                 cols.forEach(col => {{
@@ -630,23 +624,33 @@ def main():
                     }});
                 }});
 
-                // Resize & Init
-                window.addEventListener('resize', syncRowHeights);
+                window.addEventListener('resize', () => {{
+                    syncRowHeights();
+                    adjustToViewport();
+                }});
                 
-                // Repeated calls to ensure fonts loaded
-                setTimeout(syncRowHeights, 100);
+                setTimeout(() => {{
+                    syncRowHeights();
+                    adjustToViewport();
+                }}, 100);
                 setTimeout(syncRowHeights, 500);
-                setTimeout(syncRowHeights, 1000);
                 setTimeout(syncRowHeights, 3000);
             }})();
         </script>
     </body>
     </html>
     """
-                # components.htmlを使用（iframeでJS実行を保証）
-                # 高さを非常に大きく設定 - 内部CSSが100%で実際の表示を制御
-                # 大きい画面でも小さい画面でも余白なく表示される
-                components.html(html_content, height=800, scrolling=True)
+                # 親側にCSSを注入して、iframe自体の高さを動的に制御する（クロスオリジン対策）
+                st.markdown(f\"\"\"
+                <style>
+                    iframe[title="st.components.v1.html"] {{
+                        height: calc(100vh - 300px) !important;
+                        min-height: 400px !important;
+                    }}
+                </style>
+                \"\"\", unsafe_allow_html=True)
+                
+                components.html(html_content, height=1200, scrolling=False)
         else:
             st.info("元記事のURLを入力してください。")
 
