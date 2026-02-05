@@ -62,11 +62,6 @@ def parse_wechat_article(html: str, url: str) -> ArticleContent:
                 structured_html_parts.append({"tag": tag.name, "text": txt})
                 plain_text_parts.append(txt)
 
-
-    # Prepend title to structured_html_parts so it appears in translation view
-    if title:
-        structured_html_parts.insert(0, {"tag": "h3", "text": title})
-
     return ArticleContent(url, title, "\n\n".join(plain_text_parts), image_urls, publisher, publish_date, structured_html_parts)
 
 @st.cache_data(show_spinner=False)

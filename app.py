@@ -448,6 +448,15 @@ def main():
                 len_t1 = len(trans_data) if trans_data else 0
                 len_t2 = len(trans_data_2) if trans_data_2 else 0
                 max_len = max(len_src, len_t1, len_t2)
+                
+                # --- Title Row (Prepend before body) ---
+                title_orig = src_article.title or ""
+                title_trans = r_title if is_trans else ""
+                
+                left_blocks += f"<div class='trans-paragraph-block trans-title-block'><h3>{title_orig}</h3><span style='font-size:0.8em; color:#64748b;'>{src_article.publisher or ''}</span></div>"
+                center_blocks += f"<div class='trans-paragraph-block trans-title-block'><h3>{title_trans}</h3></div>"
+                if is_compare_mode:
+                    right_blocks += f"<div class='trans-paragraph-block trans-title-block'><h3></h3></div>"
             
                 for i in range(max_len):
                     row_id = f"row-{i}"
