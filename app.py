@@ -872,16 +872,20 @@ def main():
                                             if ext == "jpeg":
                                                 ext = "jpg"
                                             
-                                            if st.download_button(
+                                            # Use on_click to set state BEFORE the download triggers
+                                            def mark_saved(key):
+                                                st.session_state[key] = True
+                                            
+                                            st.download_button(
                                                 label="保存",
                                                 data=img_bytes,
                                                 file_name=f"image_{abs_idx + 1}.{ext}",
                                                 mime=f"image/{img_fmt.lower() if img_fmt else 'jpeg'}",
                                                 key=f"dl_single_{abs_idx}",
-                                                use_container_width=True
-                                            ):
-                                                st.session_state[saved_key] = True
-                                                st.rerun()
+                                                use_container_width=True,
+                                                on_click=mark_saved,
+                                                args=(saved_key,)
+                                            )
                                         except:
                                             st.button("保存", key=f"dl_err_{abs_idx}", disabled=True, use_container_width=True)
                                     else:
