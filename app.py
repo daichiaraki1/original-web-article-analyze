@@ -62,6 +62,39 @@ def main():
             color: #3b82f6 !important;
             background-color: #f0f9ff !important;
         }
+        
+        /* 選択ボタン (チェックボックス風) - 未選択状態 */
+        .stButton > button[kind="secondary"]:has(> div > p:first-child) {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important;
+            border: 2px solid #e2e8f0 !important;
+            color: #64748b !important;
+            border-radius: 10px !important;
+            font-weight: 500 !important;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+        }
+        .stButton > button[kind="secondary"]:has(> div > p:first-child):hover {
+            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%) !important;
+            border-color: #94a3b8 !important;
+            color: #475569 !important;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07) !important;
+        }
+        
+        /* 選択ボタン (チェックボックス風) - 選択状態 */
+        .stButton > button[kind="primary"] {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+            border: 2px solid #2563eb !important;
+            color: #ffffff !important;
+            border-radius: 10px !important;
+            font-weight: 600 !important;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35) !important;
+        }
+        .stButton > button[kind="primary"]:hover {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+            border-color: #1d4ed8 !important;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(59, 130, 246, 0.45) !important;
+        }
 
 
         
@@ -830,10 +863,10 @@ def main():
                                 with h_c1:
                                     # Styled Checkbox Toggle Button
                                     if is_selected:
-                                        btn_label = "☑ 選択中"
+                                        btn_label = "✓ 選択中"
                                         btn_type = "primary"
                                     else:
-                                        btn_label = "☐ 選択"
+                                        btn_label = "○ 選択"
                                         btn_type = "secondary"
                                     
                                     if st.button(btn_label, key=f"btn_card_{abs_idx}", type=btn_type, use_container_width=True):
