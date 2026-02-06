@@ -288,6 +288,15 @@ def main():
             # if cmp_article checks removed to keep translation view active
             t_key = f"t_v9_{src_url}"
             
+            # URLが変更された場合、言語選択をリセットして自動判定を再実行させる
+            if "last_src_url" not in st.session_state:
+                st.session_state["last_src_url"] = ""
+            
+            if st.session_state["last_src_url"] != src_url:
+                if "src_lang_select" in st.session_state:
+                    del st.session_state["src_lang_select"]
+                st.session_state["last_src_url"] = src_url
+            
             # 言語マップ（共通で使用）
             lang_map = {
                 "自動検出": "auto",
