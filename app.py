@@ -305,14 +305,17 @@ def main():
                 if "src_lang_select" not in st.session_state:
                     detected_code = detect_language(src_article.text[:2000] if src_article.text else "")
                     
-                    if detected_code.lower().startswith("zh"):
+                    if detected_code == 'mixed':
+                        # 複数言語が混在する場合は「自動検出」に任せる（何もしない）
+                        pass
+                    elif detected_code.lower().startswith("zh"):
                         if "tw" in detected_code.lower() or "hant" in detected_code.lower():
                             st.session_state["src_lang_select"] = "中国語 (繁体字)"
                         else:
                             st.session_state["src_lang_select"] = "中国語 (簡体字)"
                     elif detected_code.lower().startswith("en"):
                          st.session_state["src_lang_select"] = "英語"
-                    elif "weixin.qq.com" in src_url:
+                    elif detected_code == 'unknown' and "weixin.qq.com" in src_url:
                         # 検出不能だがURLがWeChatの場合のフォールバック
                         st.session_state["src_lang_select"] = "中国語 (簡体字)"
                 

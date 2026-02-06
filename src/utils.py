@@ -148,25 +148,31 @@ def make_diff_html(a, b):
     return table_html, ""  # Return table as left, empty string as right (not used)
 
 # --- 言語検出ユーティリティ ---
-from langdetect import detect
+from langdetect import detect, detect_langs
 from langdetect.lang_detect_exception import LangDetectException
 
 def detect_language(text: str) -> str:
     """
     テキストの言語を検出する。
-    戻り値: 'zh-CN', 'zh-TW', 'en', 'ja' など。
-    検出できない場合は 'unknown' を返す。
+    戻り値: 'zh-cn', 'en', 'mixed', 'unknown' など。
+    確率が低い場合や複数言語が拮抗している場合は 'mixed' を返す。
     """
     try:
         # 短すぎるテキストは検出精度が低いので除外または処理
-        if not text or len(text.strip()) < 5:
+        if not text or len(text.strip()) < 10:
             return "unknown"
             
-        lang = detect(text)
+        langs = detect_langs(text)
+        if not langs:
+            return "unknown"
+            
+        primary = langs[0]
         
-        # langdetectは 'zh-cn', 'zh-tw' を区別して返す（はずだが、zh-cn/zh-twが返るかzhのみかはバージョンによる）
-        # 多くの場合は 'zh-cn' または 'zh-tw' だが、単に 'zh' の場合もあるため補正が必要かもしれない
-        # 一旦そのまま返す
-        return lang
+        # 信頼度が低い、または混合している場合
+        # 例: 中国語記事の中に英語の引用が多い場合などは mixed として自動検出（段落ごとの判定）に任せる
+        if primary.prob < 0.95 and len(langs) > 1:
+            return "mixed"
+            
+        return primary.lang
     except LangDetectException:
         return "unknown"
