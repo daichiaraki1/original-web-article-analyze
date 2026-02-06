@@ -1,7 +1,7 @@
 from typing import List
 import streamlit as st
 import re
-from deep_translator import GoogleTranslator, MyMemoryTranslator
+from deep_translator import GoogleTranslator, MyMemoryTranslator, DeeplTranslator
 
 # Google翻訳の文字数制限（安全マージンを取って4500文字）
 CHAR_LIMIT = 4500
@@ -62,7 +62,7 @@ def split_text_by_sentences(text: str, max_chars: int = CHAR_LIMIT) -> List[str]
     return chunks if chunks else [text]
 
 
-def translate_single_text(text: str, engine_name: str, source_lang: str) -> tuple:
+def translate_single_text(text: str, engine_name: str, source_lang: str, deepl_api_key: str = None) -> tuple:
     """
     単一のテキストを翻訳する（文字数制限考慮）
     Returns: (translated_text, used_engine)
@@ -75,17 +75,17 @@ def translate_single_text(text: str, engine_name: str, source_lang: str) -> tupl
         final_engine = engine_name
         
         for chunk in chunks:
-            trans, eng = _translate_chunk(chunk, engine_name, source_lang)
+            trans, eng = _translate_chunk(chunk, engine_name, source_lang, deepl_api_key)
             translated_chunks.append(trans)
             if "Fallback" in eng or "Failed" in eng:
                 final_engine = eng
         
         return " ".join(translated_chunks), final_engine
     else:
-        return _translate_chunk(text, engine_name, source_lang)
+        return _translate_chunk(text, engine_name, source_lang, deepl_api_key)
 
 
-def _translate_chunk(text: str, engine_name: str, source_lang: str) -> tuple:
+def _translate_chunk(text: str, engine_name: str, source_lang: str, deepl_api_key: str = None) -> tuple:
     """
     実際の翻訳処理（内部関数）
     """
@@ -100,6 +100,42 @@ def _translate_chunk(text: str, engine_name: str, source_lang: str) -> tuple:
                 return (res if res else text), "MyMemory (Fallback)"
             except:
                 return text, "Failed"
+    
+    elif engine_name == "DeepL":
+        if not deepl_api_key:
+            return text, "Failed (No API Key)"
+        try:
+            # DeepLの言語コード変換
+            deepl_source = source_lang.upper() if source_lang != 'auto' else None
+            if deepl_source == 'ZH-CN':
+                deepl_source = 'ZH'
+            elif deepl_source == 'ZH-TW':
+                deepl_source = 'ZH'
+            
+            res = DeeplTranslator(
+                api_key=deepl_api_key,
+                source=deepl_source,
+                target='JA',
+                use_free_api=True  # 無料版API対応
+            ).translate(text)
+            return (res if res else text), "DeepL"
+        except Exception as e:
+            # Pro版APIの場合を試す
+            try:
+                res = DeeplTranslator(
+                    api_key=deepl_api_key,
+                    source=deepl_source,
+                    target='JA',
+                    use_free_api=False
+                ).translate(text)
+                return (res if res else text), "DeepL (Pro)"
+            except:
+                # フォールバック
+                try:
+                    res = GoogleTranslator(source=source_lang, target='ja').translate(text)
+                    return (res if res else text), "Google (Fallback)"
+                except:
+                    return text, f"Failed ({str(e)[:30]})"
     
     elif engine_name == "MyMemory":
         try:
@@ -116,7 +152,7 @@ def _translate_chunk(text: str, engine_name: str, source_lang: str) -> tuple:
     return text, "None"
 
 
-def translate_paragraphs(paragraphs: List[dict], engine_name="Google", source_lang="auto"):
+def translate_paragraphs(paragraphs: List[dict], engine_name="Google", source_lang="auto", deepl_api_key: str = None):
     """
     段落ごとに翻訳する（長い段落は自動分割）
     """
@@ -154,7 +190,7 @@ def translate_paragraphs(paragraphs: List[dict], engine_name="Google", source_la
         """, unsafe_allow_html=True)
         
         # 翻訳実行（長文は自動分割）
-        res_text, used_engine = translate_single_text(text, engine_name, source_lang)
+        res_text, used_engine = translate_single_text(text, engine_name, source_lang, deepl_api_key)
         
         translated_data.append({
             "text": str(res_text),

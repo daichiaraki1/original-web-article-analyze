@@ -298,7 +298,7 @@ def main():
             
             # 翻訳がまだ実行されていない場合
             if t_key not in st.session_state:
-                # 言語選択（コンパクトに配置）
+                # 言語選択とDeepL API設定
                 lang_col1, lang_col2, lang_col3 = st.columns([1, 2, 1])
                 with lang_col2:
                     st.markdown("<div style='margin-bottom: 5px; font-weight: bold; color: #475569;'>元記事の言語</div>", unsafe_allow_html=True)
@@ -309,6 +309,40 @@ def main():
                         horizontal=True,
                         label_visibility="collapsed"
                     )
+                    
+                    # DeepL APIキー入力（折りたたみ形式）
+                    with st.expander("🔑 DeepL APIキー設定（任意）", expanded=False):
+                        st.markdown("""
+                            <div style="font-size: 0.85em; color: #64748b; margin-bottom: 10px;">
+                                DeepLのAPIキーをお持ちの場合、入力すると翻訳エンジンに「DeepL」が追加されます。
+                                <a href="https://www.deepl.com/pro-api" target="_blank">APIキーを取得</a>
+                            </div>
+                        """, unsafe_allow_html=True)
+                        
+                        deepl_key_input = st.text_input(
+                            "DeepL APIキー",
+                            value=st.session_state.get("deepl_api_key", ""),
+                            type="password",
+                            key="deepl_key_input",
+                            placeholder="xxxx-xxxx-xxxx-xxxx"
+                        )
+                        
+                        # 保存ボタン
+                        if st.button("APIキーを保存", key="save_deepl_key"):
+                            st.session_state["deepl_api_key"] = deepl_key_input
+                            if deepl_key_input:
+                                st.success("✅ DeepL APIキーを保存しました")
+                            else:
+                                st.info("APIキーがクリアされました")
+                        
+                        # 保存済みキーがあれば表示
+                        if st.session_state.get("deepl_api_key"):
+                            st.markdown(f"""
+                                <div style="font-size: 0.8em; color: #22c55e; margin-top: 5px;">
+                                    ✓ APIキー設定済み（{st.session_state['deepl_api_key'][:8]}...）
+                                </div>
+                            """, unsafe_allow_html=True)
+                
                 source_lang = lang_map[lang_choice_label]
                 
                 st.markdown("<br>", unsafe_allow_html=True)
@@ -379,7 +413,8 @@ def main():
                     """, unsafe_allow_html=True)
                     
                     # エンジン選択ドロップダウン（選択時に翻訳開始）
-                    engines = ["-- 選択してください --", "Google", "MyMemory"]
+                    # エンジン選択ドロップダウン（選択時に翻訳開始）
+                    engines = ["-- 選択してください --", "Google", "DeepL", "MyMemory"] if st.session_state.get("deepl_api_key") else ["-- 選択してください --", "Google", "MyMemory"]
                     selected_engine = st.selectbox(
                         "翻訳エンジン",
                         engines,
@@ -394,12 +429,14 @@ def main():
                             st.session_state[t_key] = translate_paragraphs(
                                 src_article.structured_html_parts,
                                 engine_name=selected_engine,
-                                source_lang=source_lang
+                                source_lang=source_lang,
+                                deepl_api_key=st.session_state.get("deepl_api_key")
                             )
                             st.session_state[f"t_ttl_v9_{src_url}"] = translate_paragraphs(
                                 [{"tag": "h1", "text": src_article.title}],
                                 engine_name=selected_engine,
-                                source_lang=source_lang
+                                source_lang=source_lang,
+                                deepl_api_key=st.session_state.get("deepl_api_key")
                             )[0]["text"]
                         st.rerun()
                 
@@ -532,7 +569,7 @@ def main():
                 
                 with hdr_col2:
                     # Engine 1 Selector
-                    engines = ["Google", "MyMemory"]
+                    engines = ["Google", "DeepL", "MyMemory"] if st.session_state.get("deepl_api_key") else ["Google", "MyMemory"]
                     current_engine_1_idx = engines.index(engine_1) if engine_1 in engines else 0
                     
                     st.markdown("""
@@ -563,12 +600,14 @@ def main():
                             st.session_state[t_key] = translate_paragraphs(
                                 src_article.structured_html_parts,
                                 engine_name=new_engine_1,
-                                source_lang=source_lang
+                                source_lang=source_lang,
+                                deepl_api_key=st.session_state.get("deepl_api_key")
                             )
                             st.session_state[f"t_ttl_v9_{src_url}"] = translate_paragraphs(
                                 [{"tag": "h1", "text": src_article.title}],
                                 engine_name=new_engine_1,
-                                source_lang=source_lang
+                                source_lang=source_lang,
+                                deepl_api_key=st.session_state.get("deepl_api_key")
                             )[0]["text"]
                         st.rerun()
                     # 初期設定
@@ -609,12 +648,14 @@ def main():
                                 st.session_state[t_key_2] = translate_paragraphs(
                                     src_article.structured_html_parts,
                                     engine_name=new_engine_2,
-                                    source_lang=source_lang
+                                    source_lang=source_lang,
+                                    deepl_api_key=st.session_state.get("deepl_api_key")
                                 )
                                 st.session_state[f"t_ttl_v9_{src_url}_compare"] = translate_paragraphs(
                                     [{"tag": "h1", "text": src_article.title}],
                                     engine_name=new_engine_2,
-                                    source_lang=source_lang
+                                    source_lang=source_lang,
+                                    deepl_api_key=st.session_state.get("deepl_api_key")
                                 )[0]["text"]
                             st.rerun()
                         # 初期設定
@@ -635,7 +676,7 @@ def main():
                         """, unsafe_allow_html=True)
                         
                         # 既に翻訳1で使っているエンジンとは別のデフォルトを推奨
-                        compare_engines = ["-- 選択してください --", "Google", "MyMemory"]
+                        compare_engines = ["-- 選択してください --", "Google", "DeepL", "MyMemory"] if st.session_state.get("deepl_api_key") else ["-- 選択してください --", "Google", "MyMemory"]
                         selected_compare_engine = st.selectbox(
                             "比較エンジン",
                             compare_engines,
@@ -651,12 +692,14 @@ def main():
                                 st.session_state[t_key_2] = translate_paragraphs(
                                     src_article.structured_html_parts,
                                     engine_name=selected_compare_engine,
-                                    source_lang=source_lang
+                                    source_lang=source_lang,
+                                    deepl_api_key=st.session_state.get("deepl_api_key")
                                 )
                                 st.session_state[f"t_ttl_v9_{src_url}_compare"] = translate_paragraphs(
                                     [{"tag": "h1", "text": src_article.title}],
                                     engine_name=selected_compare_engine,
-                                    source_lang=source_lang
+                                    source_lang=source_lang,
+                                    deepl_api_key=st.session_state.get("deepl_api_key")
                                 )[0]["text"]
                                 st.session_state["show_comparison_view"] = True
                             st.rerun()
