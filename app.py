@@ -828,11 +828,61 @@ def main():
                                 h_c1, h_c2, h_c3 = st.columns([2.5, 2.5, 5])
                                 
                                 with h_c1:
-                                    # Toggle Button (Select)
-                                    btn_label = "■ 選択中" if is_selected else "□ 選択"
-                                    btn_type = "primary" if is_selected else "secondary"
+                                    # Styled Checkbox Toggle
+                                    if is_selected:
+                                        # Selected state - filled checkbox with checkmark
+                                        st.markdown("""
+                                        <div style="
+                                            display: flex;
+                                            align-items: center;
+                                            gap: 6px;
+                                            padding: 6px 10px;
+                                            background: linear-gradient(135deg, #3b82f6, #2563eb);
+                                            border-radius: 8px;
+                                            cursor: pointer;
+                                            box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+                                        ">
+                                            <div style="
+                                                width: 18px;
+                                                height: 18px;
+                                                background: white;
+                                                border-radius: 4px;
+                                                display: flex;
+                                                align-items: center;
+                                                justify-content: center;
+                                                font-size: 12px;
+                                                color: #2563eb;
+                                                font-weight: bold;
+                                            ">✓</div>
+                                            <span style="color: white; font-weight: 600; font-size: 0.85em;">選択中</span>
+                                        </div>
+                                        """, unsafe_allow_html=True)
+                                    else:
+                                        # Unselected state - empty checkbox
+                                        st.markdown("""
+                                        <div style="
+                                            display: flex;
+                                            align-items: center;
+                                            gap: 6px;
+                                            padding: 6px 10px;
+                                            background: #f1f5f9;
+                                            border: 1px solid #e2e8f0;
+                                            border-radius: 8px;
+                                            cursor: pointer;
+                                        ">
+                                            <div style="
+                                                width: 18px;
+                                                height: 18px;
+                                                background: white;
+                                                border: 2px solid #cbd5e1;
+                                                border-radius: 4px;
+                                            "></div>
+                                            <span style="color: #64748b; font-weight: 500; font-size: 0.85em;">選択</span>
+                                        </div>
+                                        """, unsafe_allow_html=True)
                                     
-                                    if st.button(btn_label, key=f"btn_card_{abs_idx}", type=btn_type, use_container_width=True):
+                                    # Hidden button for click handling (overlaid)
+                                    if st.button("　", key=f"btn_card_{abs_idx}", use_container_width=True, label_visibility="collapsed"):
                                         if is_selected:
                                             st.session_state.sel_imgs.discard(abs_idx)
                                             st.session_state[f"img_chk_v9_{abs_idx}"] = False
