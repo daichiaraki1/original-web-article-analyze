@@ -845,11 +845,25 @@ def main():
 
                                 with h_c2:
                                     # Save (Download) Button - Individual Download
-                                    # Check if already saved
                                     saved_key = f"saved_v9_{abs_idx}"
                                     is_saved = st.session_state.get(saved_key, False)
                                     
-                                    if img_b64:
+                                    if is_saved:
+                                        # Already saved - show completed state
+                                        st.markdown("""
+                                        <div style="
+                                            padding: 6px 12px;
+                                            background: #dcfce7;
+                                            border: 1px solid #86efac;
+                                            border-radius: 8px;
+                                            text-align: center;
+                                            color: #16a34a;
+                                            font-weight: 600;
+                                            font-size: 0.85em;
+                                        ">✓ 保存済</div>
+                                        """, unsafe_allow_html=True)
+                                    elif img_b64:
+                                        # Not saved yet - show download button
                                         import base64
                                         try:
                                             b64_data = img_b64.split(",", 1)[1]
@@ -858,35 +872,20 @@ def main():
                                             if ext == "jpeg":
                                                 ext = "jpg"
                                             
-                                            if is_saved:
-                                                # Already saved - show disabled state
-                                                st.markdown("""
-                                                <div style="
-                                                    padding: 6px 12px;
-                                                    background: #dcfce7;
-                                                    border: 1px solid #86efac;
-                                                    border-radius: 8px;
-                                                    text-align: center;
-                                                    color: #16a34a;
-                                                    font-weight: 600;
-                                                    font-size: 0.85em;
-                                                ">✓ 保存済</div>
-                                                """, unsafe_allow_html=True)
-                                            else:
-                                                # Not yet saved - show download button
-                                                if st.download_button(
-                                                    label="保存",
-                                                    data=img_bytes,
-                                                    file_name=f"image_{abs_idx + 1}.{ext}",
-                                                    mime=f"image/{img_fmt.lower() if img_fmt else 'jpeg'}",
-                                                    key=f"dl_single_{abs_idx}",
-                                                    use_container_width=True
-                                                ):
-                                                    st.session_state[saved_key] = True
-                                                    st.rerun()  # 即座に「保存済」に更新
+                                            if st.download_button(
+                                                label="保存",
+                                                data=img_bytes,
+                                                file_name=f"image_{abs_idx + 1}.{ext}",
+                                                mime=f"image/{img_fmt.lower() if img_fmt else 'jpeg'}",
+                                                key=f"dl_single_{abs_idx}",
+                                                use_container_width=True
+                                            ):
+                                                st.session_state[saved_key] = True
+                                                st.rerun()
                                         except:
                                             st.button("保存", key=f"dl_err_{abs_idx}", disabled=True, use_container_width=True)
                                     else:
+                                        # No image available
                                         st.button("保存", key=f"dl_na_{abs_idx}", disabled=True, use_container_width=True)
 
                                 with h_c3:
