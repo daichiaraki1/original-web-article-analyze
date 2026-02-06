@@ -1,11 +1,124 @@
 from typing import List
 import streamlit as st
+import re
 from deep_translator import GoogleTranslator, MyMemoryTranslator
+
+# Google翻訳の文字数制限（安全マージンを取って4500文字）
+CHAR_LIMIT = 4500
+
+
+def split_text_by_sentences(text: str, max_chars: int = CHAR_LIMIT) -> List[str]:
+    """
+    テキストを文単位で分割し、各チャンクがmax_chars以下になるようにする
+    日本語・中国語・英語の文末記号に対応
+    """
+    # 文末記号で分割（。！？.!? など）
+    # 中国語の句読点も考慮
+    sentence_pattern = r'([。！？\.\!\?；;]+)'
+    
+    parts = re.split(sentence_pattern, text)
+    
+    # 分割記号を前の文に結合
+    sentences = []
+    i = 0
+    while i < len(parts):
+        sentence = parts[i]
+        # 次が区切り記号なら結合
+        if i + 1 < len(parts) and re.match(sentence_pattern, parts[i + 1]):
+            sentence += parts[i + 1]
+            i += 2
+        else:
+            i += 1
+        if sentence.strip():
+            sentences.append(sentence.strip())
+    
+    # 文をチャンクにまとめる
+    chunks = []
+    current_chunk = ""
+    
+    for sentence in sentences:
+        # 1文でも制限を超える場合はそのまま追加（APIに任せる）
+        if len(sentence) > max_chars:
+            if current_chunk:
+                chunks.append(current_chunk)
+                current_chunk = ""
+            chunks.append(sentence)
+        # 追加しても制限内なら追加
+        elif len(current_chunk) + len(sentence) + 1 <= max_chars:
+            if current_chunk:
+                current_chunk += " " + sentence
+            else:
+                current_chunk = sentence
+        # 制限を超える場合は現在のチャンクを確定して新しいチャンクを開始
+        else:
+            if current_chunk:
+                chunks.append(current_chunk)
+            current_chunk = sentence
+    
+    # 残りのチャンクを追加
+    if current_chunk:
+        chunks.append(current_chunk)
+    
+    return chunks if chunks else [text]
+
+
+def translate_single_text(text: str, engine_name: str, source_lang: str) -> tuple:
+    """
+    単一のテキストを翻訳する（文字数制限考慮）
+    Returns: (translated_text, used_engine)
+    """
+    # 文字数チェック
+    if len(text) > CHAR_LIMIT:
+        # 文単位で分割
+        chunks = split_text_by_sentences(text, CHAR_LIMIT)
+        translated_chunks = []
+        final_engine = engine_name
+        
+        for chunk in chunks:
+            trans, eng = _translate_chunk(chunk, engine_name, source_lang)
+            translated_chunks.append(trans)
+            if "Fallback" in eng or "Failed" in eng:
+                final_engine = eng
+        
+        return " ".join(translated_chunks), final_engine
+    else:
+        return _translate_chunk(text, engine_name, source_lang)
+
+
+def _translate_chunk(text: str, engine_name: str, source_lang: str) -> tuple:
+    """
+    実際の翻訳処理（内部関数）
+    """
+    if engine_name == "Google":
+        try:
+            res = GoogleTranslator(source=source_lang, target='ja').translate(text)
+            return (res if res else text), "Google"
+        except:
+            try:
+                mem_source = source_lang if source_lang != 'auto' else 'zh-CN'
+                res = MyMemoryTranslator(source=mem_source, target='ja-JP').translate(text)
+                return (res if res else text), "MyMemory (Fallback)"
+            except:
+                return text, "Failed"
+    
+    elif engine_name == "MyMemory":
+        try:
+            mem_source = source_lang if source_lang != 'auto' else 'zh-CN'
+            res = MyMemoryTranslator(source=mem_source, target='ja-JP').translate(text)
+            return (res if res else text), "MyMemory"
+        except:
+            try:
+                res = GoogleTranslator(source=source_lang, target='ja').translate(text)
+                return (res if res else text), "Google (Fallback)"
+            except:
+                return text, "Failed"
+    
+    return text, "None"
 
 
 def translate_paragraphs(paragraphs: List[dict], engine_name="Google", source_lang="auto"):
     """
-    1段落ずつ翻訳する方式
+    段落ごとに翻訳する（長い段落は自動分割）
     """
     translated_data = []
     total = len(paragraphs)
@@ -25,7 +138,8 @@ def translate_paragraphs(paragraphs: List[dict], engine_name="Google", source_la
         progress = (i + 1) / total
         progress_bar.progress(progress, text=f"翻訳中: {i+1}/{total} 段落")
         
-        # Status update with styled box
+        # 長文の場合は分割処理中であることを表示
+        char_info = f" ({len(text)}文字)" if len(text) > CHAR_LIMIT else ""
         status_area.markdown(f"""
             <div style="
                 padding: 12px 16px;
@@ -35,48 +149,20 @@ def translate_paragraphs(paragraphs: List[dict], engine_name="Google", source_la
                 color: #0369a1;
                 font-weight: 500;
             ">
-                <strong>{engine_name}</strong> で翻訳中... ({i+1}/{total} 段落)
+                <strong>{engine_name}</strong> で翻訳中... ({i+1}/{total} 段落){char_info}
             </div>
         """, unsafe_allow_html=True)
         
-        res_text = text
-        used_engine = "None"
+        # 翻訳実行（長文は自動分割）
+        res_text, used_engine = translate_single_text(text, engine_name, source_lang)
         
-        # Translation Logic based on selection
-        if engine_name == "Google":
-            try:
-                res_text = GoogleTranslator(source=source_lang, target='ja').translate(text)
-                used_engine = "Google"
-            except:
-                try:
-                    # Fallback to MyMemory
-                    mem_source = source_lang
-                    if mem_source == 'auto': mem_source = 'zh-CN'
-                    res_text = MyMemoryTranslator(source=mem_source, target='ja-JP').translate(text)
-                    used_engine = "MyMemory (Fallback)"
-                except:
-                    res_text = text
-                    used_engine = "Failed"
-                    
-        elif engine_name == "MyMemory":
-            try:
-                mem_source = source_lang
-                if mem_source == 'auto': mem_source = 'zh-CN'
-                res_text = MyMemoryTranslator(source=mem_source, target='ja-JP').translate(text)
-                used_engine = "MyMemory"
-            except:
-                try:
-                    res_text = GoogleTranslator(source=source_lang, target='ja').translate(text)
-                    used_engine = "Google (Fallback)"
-                except:
-                    res_text = text
-                    used_engine = "Failed"
-        
-        translated_data.append({"text": str(res_text), "engine": used_engine, "tag": tag})
+        translated_data.append({
+            "text": str(res_text),
+            "engine": used_engine,
+            "tag": tag
+        })
     
     # Clear progress UI when done
     progress_bar.empty()
     status_area.empty()
     return translated_data
-
-
