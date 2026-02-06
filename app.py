@@ -799,19 +799,18 @@ def main():
                                 # 2. Prepare Image & Dims & Format
                                 img_b64, img_dims, img_fmt = fetch_image_data_v10(img_url, base_url)
                                 
-                                # 3. Header Row: Button (Left) vs Dims/Format (Right)
-                                h_c1, h_c2 = st.columns([3.5, 6.5])
+                                # 3. Header Row: Select Button | Save Button | Dims/Format
+                                h_c1, h_c2, h_c3 = st.columns([2.5, 2.5, 5])
                                 
                                 with h_c1:
-                                    # Toggle Button (Top-Left)
+                                    # Toggle Button (Select)
                                     btn_label = "■ 選択中" if is_selected else "□ 選択"
                                     btn_type = "primary" if is_selected else "secondary"
                                     
-                                    # Use a compact key for button
                                     if st.button(btn_label, key=f"btn_card_{abs_idx}", type=btn_type, use_container_width=True):
                                         if is_selected:
                                             st.session_state.sel_imgs.discard(abs_idx)
-                                            st.session_state[f"img_chk_v9_{abs_idx}"] = False # Sync
+                                            st.session_state[f"img_chk_v9_{abs_idx}"] = False
                                             st.session_state[f"chk_v9_{abs_idx}"] = False
                                         else:
                                             st.session_state.sel_imgs.add(abs_idx)
@@ -820,9 +819,33 @@ def main():
                                         st.rerun()
 
                                 with h_c2:
+                                    # Save (Download) Button - Individual Download
+                                    if img_b64:
+                                        # Extract raw bytes from base64 data URL
+                                        import base64
+                                        try:
+                                            # img_b64 format: "data:image/jpeg;base64,/9j/4AAQ..."
+                                            b64_data = img_b64.split(",", 1)[1]
+                                            img_bytes = base64.b64decode(b64_data)
+                                            ext = img_fmt.lower() if img_fmt else "jpg"
+                                            if ext == "jpeg":
+                                                ext = "jpg"
+                                            st.download_button(
+                                                label="保存",
+                                                data=img_bytes,
+                                                file_name=f"image_{abs_idx + 1}.{ext}",
+                                                mime=f"image/{img_fmt.lower() if img_fmt else 'jpeg'}",
+                                                key=f"dl_single_{abs_idx}",
+                                                use_container_width=True
+                                            )
+                                        except:
+                                            st.button("保存", key=f"dl_err_{abs_idx}", disabled=True, use_container_width=True)
+                                    else:
+                                        st.button("保存", key=f"dl_na_{abs_idx}", disabled=True, use_container_width=True)
+
+                                with h_c3:
                                     # Dimensions & Format (Right Aligned)
                                     if img_dims:
-                                        # Format string nicely, e.g., "800x600 | JPEG"
                                         info_str = f"{img_dims} <span style='font-size:0.8em; color:#94a3b8; margin-left:4px;'>{img_fmt}</span>"
                                         st.markdown(f"""
                                         <div style="
@@ -839,6 +862,7 @@ def main():
                                         {info_str}
                                         </div>
                                         """, unsafe_allow_html=True)
+
                                 
                                 # 4. Image Display (with Checkerboard)
                                 st.markdown("<div style='margin-top: 8px;'></div>", unsafe_allow_html=True)
