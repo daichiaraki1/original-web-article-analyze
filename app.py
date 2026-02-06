@@ -390,6 +390,8 @@ def main():
                                     engine_name=compare_engine, 
                                     source_lang=source_lang
                                 )
+                                # 比較用タイトル翻訳も保存
+                                st.session_state[f"t_ttl_v9_{src_url}_compare"] = translate_paragraphs([{"tag":"h1", "text":src_article.title}], engine_name=compare_engine, source_lang=source_lang)[0]["text"]
                                 # 比較モードフラグ
                                 st.session_state["show_comparison_view"] = True
                                 st.rerun()
@@ -452,11 +454,13 @@ def main():
                 # --- Title Row (Prepend before body) ---
                 title_orig = src_article.title or ""
                 title_trans = r_title if is_trans else ""
+                # 比較用タイトル翻訳を取得
+                title_trans_2 = st.session_state.get(f"t_ttl_v9_{src_url}_compare", "") if is_compare_mode else ""
                 
-                left_blocks += f"<div class='trans-paragraph-block trans-title-block'><h3>{title_orig}</h3><span style='font-size:0.8em; color:#64748b;'>{src_article.publisher or ''}</span></div>"
-                center_blocks += f"<div class='trans-paragraph-block trans-title-block'><h3>{title_trans}</h3></div>"
+                left_blocks += f"<div class='trans-paragraph-block trans-title-block' id='src-row-title'><h3>{title_orig}</h3><span style='font-size:0.8em; color:#64748b;'>{src_article.publisher or ''}</span></div>"
+                center_blocks += f"<div class='trans-paragraph-block trans-title-block' id='trans1-row-title'><h3>{title_trans}</h3></div>"
                 if is_compare_mode:
-                    right_blocks += f"<div class='trans-paragraph-block trans-title-block'><h3></h3></div>"
+                    right_blocks += f"<div class='trans-paragraph-block trans-title-block' id='trans2-row-title'><h3>{title_trans_2}</h3></div>"
             
                 for i in range(max_len):
                     row_id = f"row-{i}"
@@ -585,23 +589,37 @@ def main():
         <script>
             (function() {{
                 const syncRowHeights = () => {{
+                    // 全ての src-row- で始まるIDを持つ要素を取得
                     const srcRows = document.querySelectorAll('[id^="src-row-"]');
-                    if (srcRows.length === 0) return;
+                    if (srcRows.length === 0) {{
+                        console.log('No src rows found');
+                        return;
+                    }}
+                    console.log('Found ' + srcRows.length + ' src rows');
 
                     srcRows.forEach(srcEl => {{
                         const idStr = srcEl.id;
-                        const idx = idStr.replace('src-row-', '');
-                        const elSrc = document.getElementById(`src-row-${{idx}}`);
-                        const elT1 = document.getElementById(`trans1-row-${{idx}}`);
-                        const elT2 = document.getElementById(`trans2-row-${{idx}}`);
+                        // src-row-X から X を取り出す (X は title, 0, 1, 2, ...)
+                        const idx = idStr.substring(8); // 'src-row-' is 8 chars
+                        const elSrc = document.getElementById('src-row-' + idx);
+                        const elT1 = document.getElementById('trans1-row-' + idx);
+                        const elT2 = document.getElementById('trans2-row-' + idx);
                         const elements = [elSrc, elT1, elT2].filter(el => el);
+                        
+                        // まず高さをリセット
                         elements.forEach(el => el.style.minHeight = 'auto');
+                        
+                        // 最大高さを計算
                         let maxHeight = 0;
                         elements.forEach(el => {{
                             const h = el.getBoundingClientRect().height;
                             if (h > maxHeight) maxHeight = h;
                         }});
-                        elements.forEach(el => el.style.minHeight = maxHeight + 'px');
+                        
+                        // 最大高さを適用
+                        if (maxHeight > 0) {{
+                            elements.forEach(el => el.style.minHeight = maxHeight + 'px');
+                        }}
                     }});
                 }};
 
