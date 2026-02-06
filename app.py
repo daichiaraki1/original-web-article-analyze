@@ -555,7 +555,10 @@ def main():
                     )
                     
                     # Re-translate if engine changed
-                    if new_engine_1 != engine_1 and st.session_state.get("engine_1_prev") == engine_1:
+                    # 保存されている前回のエンジンと比較
+                    prev_engine_1 = st.session_state.get("engine_1_selected", engine_1)
+                    if new_engine_1 != prev_engine_1:
+                        st.session_state["engine_1_selected"] = new_engine_1
                         with st.spinner(f"{new_engine_1} で再翻訳中..."):
                             st.session_state[t_key] = translate_paragraphs(
                                 src_article.structured_html_parts,
@@ -567,9 +570,10 @@ def main():
                                 engine_name=new_engine_1,
                                 source_lang=source_lang
                             )[0]["text"]
-                        st.session_state["engine_1_prev"] = new_engine_1
                         st.rerun()
-                    st.session_state["engine_1_prev"] = new_engine_1
+                    # 初期設定
+                    if "engine_1_selected" not in st.session_state:
+                        st.session_state["engine_1_selected"] = engine_1
                 
                 if is_compare_mode:
                     with hdr_col3:
@@ -596,7 +600,10 @@ def main():
                         )
                         
                         # Re-translate if engine changed
-                        if new_engine_2 != engine_2 and st.session_state.get("engine_2_prev") == engine_2:
+                        # 保存されている前回のエンジンと比較
+                        prev_engine_2 = st.session_state.get("engine_2_selected", engine_2)
+                        if new_engine_2 != prev_engine_2:
+                            st.session_state["engine_2_selected"] = new_engine_2
                             with st.spinner(f"{new_engine_2} で比較用再翻訳中..."):
                                 t_key_2 = f"t_v9_{src_url}_compare"
                                 st.session_state[t_key_2] = translate_paragraphs(
@@ -609,9 +616,10 @@ def main():
                                     engine_name=new_engine_2,
                                     source_lang=source_lang
                                 )[0]["text"]
-                            st.session_state["engine_2_prev"] = new_engine_2
                             st.rerun()
-                        st.session_state["engine_2_prev"] = new_engine_2
+                        # 初期設定
+                        if "engine_2_selected" not in st.session_state:
+                            st.session_state["engine_2_selected"] = engine_2
                 else:
                     # 比較モードでない場合：比較翻訳追加セレクター
                     with hdr_col3:
