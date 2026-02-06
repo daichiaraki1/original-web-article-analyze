@@ -626,7 +626,7 @@ def main():
                     if "engine_1_selected" not in st.session_state:
                         st.session_state["engine_1_selected"] = engine_1
                 
-                    if is_compare_mode:
+                if is_compare_mode:
                     with hdr_col3:
                         # Engine 2 Selector
                         # Fallback detection
