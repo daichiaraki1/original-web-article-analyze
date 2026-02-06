@@ -110,7 +110,7 @@ def _translate_chunk(text: str, engine_name: str, source_lang: str, deepl_api_ke
             if source_lang != 'auto':
                 s_upper = source_lang.upper()
                 if s_upper in ['ZH-CN', 'ZH-TW', 'ZH-HANS', 'ZH-HANT']:
-                    deepl_source = 'ZH'
+                    deepl_source = 'zh'
                 else:
                     deepl_source = s_upper
             
