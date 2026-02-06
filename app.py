@@ -3,7 +3,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 from src.scraper import load_article_v9
 from src.translator import translate_paragraphs
-from src.utils import create_images_zip, fetch_image_data_v10, make_diff_html
+from src.utils import create_images_zip, fetch_image_data_v10, make_diff_html, detect_language
 
 # --- メイン UI ---
 def main():
@@ -301,9 +301,20 @@ def main():
                 # 言語選択とDeepL API設定
                 lang_col1, lang_col2, lang_col3 = st.columns([1, 2, 1])
                 
-                # 自動判定: WeChat等の場合はデフォルトを中国語にする
-                if "src_lang_select" not in st.session_state and "weixin.qq.com" in src_url:
-                    st.session_state["src_lang_select"] = "中国語 (簡体字)"
+                # 自動判定: コンテンツから言語を推定してデフォルト設定
+                if "src_lang_select" not in st.session_state:
+                    detected_code = detect_language(src_article.text[:2000] if src_article.text else "")
+                    
+                    if detected_code.lower().startswith("zh"):
+                        if "tw" in detected_code.lower() or "hant" in detected_code.lower():
+                            st.session_state["src_lang_select"] = "中国語 (繁体字)"
+                        else:
+                            st.session_state["src_lang_select"] = "中国語 (簡体字)"
+                    elif detected_code.lower().startswith("en"):
+                         st.session_state["src_lang_select"] = "英語"
+                    elif "weixin.qq.com" in src_url:
+                        # 検出不能だがURLがWeChatの場合のフォールバック
+                        st.session_state["src_lang_select"] = "中国語 (簡体字)"
                 
                 with lang_col2:
                     st.markdown("<div style='margin-bottom: 5px; font-weight: bold; color: #475569;'>元記事の言語</div>", unsafe_allow_html=True)
