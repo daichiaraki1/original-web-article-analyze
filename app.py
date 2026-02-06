@@ -574,7 +574,7 @@ def main():
                     # Fallback detection
                     is_fallback_1 = "Fallback" in engine_1 or "Failed" in engine_1
                     display_engine_1 = "Google" if "Google" in engine_1 else engine_1
-                    if "DeepL" in engine_1 and "Fallback" not in engine_1:
+                    if "DeepL" in engine_1:
                         display_engine_1 = "DeepL"
                     elif "MyMemory" in engine_1 and "Fallback" not in engine_1:
                         display_engine_1 = "MyMemory"
@@ -603,7 +603,7 @@ def main():
                     if is_fallback_1:
                         if "Failed" in engine_1 and "Fallback" not in engine_1:
                             # 完全な失敗（フォールバックなし）
-                            st.error(f"❌ {st.session_state.get('engine_1_selected', 'Requested Engine')} でのエラー: 翻訳できませんでした。APIキーや通信状況を確認してください。")
+                            st.error(f"❌ エラー詳細: {engine_1}")
                         else:
                             # フォールバック発生
                             st.warning(f"⚠️ {st.session_state.get('engine_1_selected', 'Requested Engine')} でのエラーのため Google にフォールバックしました。")
@@ -637,7 +637,7 @@ def main():
                         # Fallback detection
                         is_fallback_2 = "Fallback" in engine_2 or "Failed" in engine_2
                         display_engine_2 = "Google" if "Google" in engine_2 else engine_2
-                        if "DeepL" in engine_2 and "Fallback" not in engine_2:
+                        if "DeepL" in engine_2:
                             display_engine_2 = "DeepL"
                         elif "MyMemory" in engine_2 and "Fallback" not in engine_2:
                             display_engine_2 = "MyMemory"
@@ -665,7 +665,7 @@ def main():
                         
                         if is_fallback_2:
                             if "Failed" in engine_2 and "Fallback" not in engine_2:
-                                st.error(f"❌ {st.session_state.get('engine_2_selected', 'Requested Engine')} エラー: 翻訳不可")
+                                st.error(f"❌ エラー詳細: {engine_2}")
                             else:
                                 st.warning(f"⚠️ {st.session_state.get('engine_2_selected', 'Requested Engine')} エラー → Google")
                         

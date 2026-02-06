@@ -131,7 +131,7 @@ def _translate_chunk(text: str, engine_name: str, source_lang: str, deepl_api_ke
                 return (res if res else text), "DeepL (Pro)"
             except Exception as e:
                 # エラー（Googleへのフォールバックは行わない）
-                return text, f"Failed: {str(e)[:50]}"
+                return text, f"DeepL (Failed: {str(e)[:50]})"
     
     elif engine_name == "MyMemory":
         try:
