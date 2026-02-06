@@ -780,7 +780,7 @@ def main():
                 col1, col2, col_sep, col3 = st.columns([1.2, 1.2, 0.3, 2.3], gap="small")
                 
                 with col1:
-                    if st.button("📋 全選択", key="all_v9", use_container_width=True):
+                    if st.button("全選択", key="all_v9", use_container_width=True):
                         for i in range(len(image_urls)):
                             st.session_state[f"img_chk_v9_{i}"] = True
                             st.session_state[f"chk_v9_{i}"] = True
@@ -788,7 +788,7 @@ def main():
                         st.rerun()
                 
                 with col2:
-                    if st.button("✕ 解除", key="none_v9", use_container_width=True):
+                    if st.button("解除", key="none_v9", use_container_width=True):
                         for i in range(len(image_urls)):
                             st.session_state[f"img_chk_v9_{i}"] = False
                             st.session_state[f"chk_v9_{i}"] = False
@@ -823,7 +823,7 @@ def main():
                                 ext = (img_fmt_single or "jpg").lower()
                                 if ext == "jpeg": ext = "jpg"
                                 st.download_button(
-                                    label=f"⬇ ダウンロード (1枚)",
+                                    label=f"ダウンロード (1枚)",
                                     data=img_bytes_single,
                                     file_name=f"image_{single_idx + 1}.{ext}",
                                     mime=f"image/{img_fmt_single.lower() if img_fmt_single else 'jpeg'}",
@@ -831,15 +831,15 @@ def main():
                                     use_container_width=True
                                 )
                             except:
-                                st.button("⬇ ダウンロード (1枚)", disabled=True, use_container_width=True)
+                                st.button("ダウンロード (1枚)", disabled=True, use_container_width=True)
                         else:
-                            st.button("⬇ ダウンロード (1枚)", disabled=True, use_container_width=True)
+                            st.button("ダウンロード (1枚)", disabled=True, use_container_width=True)
                     elif sel_count > 1:
                         # 2枚以上: ZIP形式でダウンロード
                         zip_bytes = create_images_zip(target_urls, base_url)
                         if zip_bytes:
                             st.download_button(
-                                label=f"⬇ ダウンロード ({sel_count}枚)",
+                                label=f"ダウンロード ({sel_count}枚)",
                                 data=zip_bytes,
                                 file_name="images.zip",
                                 mime="application/zip",
