@@ -129,13 +129,9 @@ def _translate_chunk(text: str, engine_name: str, source_lang: str, deepl_api_ke
                     use_free_api=False
                 ).translate(text)
                 return (res if res else text), "DeepL (Pro)"
-            except:
-                # フォールバック
-                try:
-                    res = GoogleTranslator(source=source_lang, target='ja').translate(text)
-                    return (res if res else text), "Google (Fallback)"
-                except:
-                    return text, f"Failed ({str(e)[:30]})"
+            except Exception as e:
+                # エラー（Googleへのフォールバックは行わない）
+                return text, f"Failed: {str(e)[:50]}"
     
     elif engine_name == "MyMemory":
         try:

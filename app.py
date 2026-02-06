@@ -601,7 +601,12 @@ def main():
                     )
                     
                     if is_fallback_1:
-                        st.warning(f"⚠️ {st.session_state.get('engine_1_selected', 'Requested Engine')} でのエラーのため Google にフォールバックしました。")
+                        if "Failed" in engine_1 and "Fallback" not in engine_1:
+                            # 完全な失敗（フォールバックなし）
+                            st.error(f"❌ {st.session_state.get('engine_1_selected', 'Requested Engine')} でのエラー: 翻訳できませんでした。APIキーや通信状況を確認してください。")
+                        else:
+                            # フォールバック発生
+                            st.warning(f"⚠️ {st.session_state.get('engine_1_selected', 'Requested Engine')} でのエラーのため Google にフォールバックしました。")
                     
                     # Re-translate if engine changed
                     # 保存されている前回のエンジンと比較
@@ -659,7 +664,10 @@ def main():
                         )
                         
                         if is_fallback_2:
-                            st.warning(f"⚠️ {st.session_state.get('engine_2_selected', 'Requested Engine')} エラー → Google")
+                            if "Failed" in engine_2 and "Fallback" not in engine_2:
+                                st.error(f"❌ {st.session_state.get('engine_2_selected', 'Requested Engine')} エラー: 翻訳不可")
+                            else:
+                                st.warning(f"⚠️ {st.session_state.get('engine_2_selected', 'Requested Engine')} エラー → Google")
                         
                         # Re-translate if engine changed
                         # 保存されている前回のエンジンと比較
