@@ -754,29 +754,53 @@ def main():
                 image_urls = loaded_data["urls"]
                 base_url = loaded_data["src_url"]
                 
-                st.markdown("<br>", unsafe_allow_html=True)
+                st.markdown("""
+                <style>
+                    /* ツールバーボタン群のコンパクト化 */
+                    .toolbar-container .stButton > button {
+                        padding: 8px 16px !important;
+                        font-size: 0.85em !important;
+                    }
+                </style>
+                """, unsafe_allow_html=True)
                 
-                # 操作ボタン群
-                col1, col2, col3, col_space = st.columns([1.5, 1.5, 2.5, 5.5], gap="medium")
+                # ツールバー風レイアウト（よりコンパクトに）
+                st.markdown("""
+                <div style="
+                    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+                    border: 1px solid #e2e8f0;
+                    border-radius: 12px;
+                    padding: 12px 16px;
+                    margin-bottom: 16px;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+                ">
+                """, unsafe_allow_html=True)
+                
+                # 操作ボタン群（コンパクトなgap）
+                col1, col2, col_sep, col3 = st.columns([1.2, 1.2, 0.3, 2.3], gap="small")
                 
                 with col1:
-                    if st.button("全画像を選択", key="all_v9", use_container_width=True):
+                    if st.button("📋 全選択", key="all_v9", use_container_width=True):
                         for i in range(len(image_urls)):
                             st.session_state[f"img_chk_v9_{i}"] = True
-                            st.session_state[f"chk_v9_{i}"] = True # Widget keyも更新
+                            st.session_state[f"chk_v9_{i}"] = True
                             st.session_state.sel_imgs.add(i)
                         st.rerun()
                 
                 with col2:
-                    if st.button("全選択を解除", key="none_v9", use_container_width=True):
+                    if st.button("✕ 解除", key="none_v9", use_container_width=True):
                         for i in range(len(image_urls)):
                             st.session_state[f"img_chk_v9_{i}"] = False
-                            st.session_state[f"chk_v9_{i}"] = False # Widget keyも更新
+                            st.session_state[f"chk_v9_{i}"] = False
                             st.session_state.sel_imgs.discard(i)
                         st.rerun()
                 
+                with col_sep:
+                    # 区切り線的なスペース
+                    st.markdown("<div style='border-left: 2px solid #e2e8f0; height: 32px; margin: 0 auto;'></div>", unsafe_allow_html=True)
+                
                 with col3:
-                    # 選択状態をウィジェットの状態から直接再計算する（"1回遅れ"を防ぐため）
+                    # 選択状態をウィジェットの状態から直接再計算
                     current_sel_indices = [
                         i for i in range(len(image_urls))
                         if st.session_state.get(f"chk_v9_{i}", False)
@@ -784,11 +808,10 @@ def main():
                     target_urls = [image_urls[i] for i in current_sel_indices]
                     sel_count = len(current_sel_indices)
                     
-                    # session_state.sel_imgs も一応同期しておく
                     st.session_state.sel_imgs = set(current_sel_indices)
                     
                     if sel_count == 1:
-                        # 1枚のみ選択: 直接ダウンロード（zip化しない）
+                        # 1枚のみ選択: 直接ダウンロード
                         single_url = target_urls[0]
                         single_idx = current_sel_indices[0]
                         img_b64_single, _, img_fmt_single = fetch_image_data_v10(single_url, base_url)
@@ -800,7 +823,7 @@ def main():
                                 ext = (img_fmt_single or "jpg").lower()
                                 if ext == "jpeg": ext = "jpg"
                                 st.download_button(
-                                    label=f"ダウンロード (1枚)",
+                                    label=f"⬇ ダウンロード (1枚)",
                                     data=img_bytes_single,
                                     file_name=f"image_{single_idx + 1}.{ext}",
                                     mime=f"image/{img_fmt_single.lower() if img_fmt_single else 'jpeg'}",
@@ -808,15 +831,15 @@ def main():
                                     use_container_width=True
                                 )
                             except:
-                                st.button("ダウンロード (1枚)", disabled=True, use_container_width=True)
+                                st.button("⬇ ダウンロード (1枚)", disabled=True, use_container_width=True)
                         else:
-                            st.button("ダウンロード (1枚)", disabled=True, use_container_width=True)
+                            st.button("⬇ ダウンロード (1枚)", disabled=True, use_container_width=True)
                     elif sel_count > 1:
                         # 2枚以上: ZIP形式でダウンロード
                         zip_bytes = create_images_zip(target_urls, base_url)
                         if zip_bytes:
                             st.download_button(
-                                label=f"ダウンロード ({sel_count}枚)",
+                                label=f"⬇ ダウンロード ({sel_count}枚)",
                                 data=zip_bytes,
                                 file_name="images.zip",
                                 mime="application/zip",
@@ -826,19 +849,19 @@ def main():
                     else:
                         st.markdown("""
                         <div style="
-                            padding: 10px;
-                            border: 1px dashed #cbd5e1;
+                            padding: 8px 16px;
+                            border: 1px dashed #94a3b8;
                             border-radius: 8px;
-                            background-color: #f8fafc;
+                            background-color: #ffffff;
                             color: #64748b;
                             text-align: center;
-                            font-size: 0.9em;
+                            font-size: 0.85em;
                         ">
                             画像を選択してください
                         </div>
                         """, unsafe_allow_html=True)
                 
-                st.markdown("<br>", unsafe_allow_html=True)
+                st.markdown("</div>", unsafe_allow_html=True)
                 
                 # 画像グリッド表示（4列）
                 cols_per_row = 4
