@@ -1,13 +1,13 @@
 from typing import List
 import streamlit as st
+import re
 from deep_translator import GoogleTranslator, MyMemoryTranslator
 
-# チャンキング用の区切り文字（翻訳されにくい特殊マーカー）
-PARAGRAPH_DELIMITER = "\n[PARA]\n"
 
-def translate_paragraphs_chunked(paragraphs: List[dict], source_lang="auto", chunk_size=5):
+def translate_paragraphs_chunked(paragraphs: List[dict], source_lang="auto", chunk_size=3):
     """
     チャンキング方式の翻訳: 複数段落をまとめて翻訳し、文脈を考慮した翻訳を実現
+    番号付きマーカーを使用して段落を区切る
     """
     translated_data = []
     total = len(paragraphs)
@@ -23,13 +23,19 @@ def translate_paragraphs_chunked(paragraphs: List[dict], source_lang="auto", chu
     chunks = []
     for i in range(0, total, chunk_size):
         chunk = paragraphs[i:i + chunk_size]
-        chunks.append(chunk)
+        chunks.append((i, chunk))  # (開始インデックス, チャンク) のタプル
     
-    for chunk_idx, chunk in enumerate(chunks):
-        # チャンク内のテキストを区切り文字で連結
+    for chunk_idx, (start_idx, chunk) in enumerate(chunks):
         texts = [p.get("text", "") for p in chunk]
         tags = [p.get("tag", "p") for p in chunk]
-        combined_text = PARAGRAPH_DELIMITER.join(texts)
+        
+        # 番号付きマーカーで連結
+        # 例: "###1### 最初の段落 ###2### 二番目の段落 ###3### 三番目の段落"
+        marked_parts = []
+        for i, text in enumerate(texts):
+            marker = f"###{start_idx + i + 1}###"
+            marked_parts.append(f"{marker} {text}")
+        combined_text = " ".join(marked_parts)
         
         # Update progress
         chunk_start = chunk_idx * chunk_size + 1
@@ -54,89 +60,102 @@ def translate_paragraphs_chunked(paragraphs: List[dict], source_lang="auto", chu
             # まとめて翻訳
             translated_combined = GoogleTranslator(source=source_lang, target='ja').translate(combined_text)
             
-            # Noneチェック
             if translated_combined is None:
-                print(f"[Chunking] Translation returned None for chunk {chunk_idx}")
                 raise Exception("Translation returned None")
             
-            print(f"[Chunking] Chunk {chunk_idx}: Original delimiter count: {combined_text.count(PARAGRAPH_DELIMITER)}")
-            print(f"[Chunking] Chunk {chunk_idx}: Translated text length: {len(translated_combined)}")
+            print(f"[Chunking] Chunk {chunk_idx}: Translated = {translated_combined[:200]}...")
             
-            # 区切り文字で分割（複数パターンを試す）
-            translated_parts = []
-            delimiter_patterns = ["[PARA]", "[パラ]", "【パラ】", "[PARA]\n", "\n[PARA]\n"]
+            # マーカーで分割（正規表現で番号マーカーを検索）
+            # ###数字### のパターンを探す
+            pattern = r'###(\d+)###'
             
-            for pattern in delimiter_patterns:
-                if pattern in translated_combined:
-                    translated_parts = [p.strip() for p in translated_combined.split(pattern) if p.strip()]
-                    print(f"[Chunking] Found delimiter '{pattern}', got {len(translated_parts)} parts")
-                    break
+            # マーカーの位置と番号を見つける
+            matches = list(re.finditer(pattern, translated_combined))
             
-            # 区切りが見つからない場合
-            if not translated_parts:
-                print(f"[Chunking] No delimiter found in translation, falling back to single paragraph translation")
-                # 1段落ずつ翻訳にフォールバック
-                for j, text in enumerate(texts):
-                    try:
-                        single_trans = GoogleTranslator(source=source_lang, target='ja').translate(text)
-                        if single_trans:
-                            translated_parts.append(single_trans)
-                        else:
-                            translated_parts.append(text)
-                    except:
-                        translated_parts.append(text)
-            
-            # 分割数が合わない場合の調整
-            while len(translated_parts) < len(chunk):
-                # 不足分は1段落ずつ翻訳
-                idx = len(translated_parts)
-                if idx < len(texts):
-                    try:
-                        single_trans = GoogleTranslator(source=source_lang, target='ja').translate(texts[idx])
-                        translated_parts.append(single_trans if single_trans else texts[idx])
-                    except:
-                        translated_parts.append(texts[idx])
-                else:
-                    break
-            
-            # 結果を追加
-            for j in range(len(chunk)):
-                if j < len(translated_parts):
-                    translated_data.append({
-                        "text": str(translated_parts[j]).strip(),
-                        "engine": "Google (Chunking)",
-                        "tag": tags[j]
-                    })
-                else:
-                    translated_data.append({
-                        "text": texts[j],
-                        "engine": "Google (Chunking - Partial)",
-                        "tag": tags[j]
-                    })
+            if len(matches) >= 1:
+                # マーカーが見つかった場合
+                translated_parts = []
+                for i, match in enumerate(matches):
+                    start_pos = match.end()
+                    # 次のマーカーまで、または文字列の終わりまでを取得
+                    if i + 1 < len(matches):
+                        end_pos = matches[i + 1].start()
+                    else:
+                        end_pos = len(translated_combined)
                     
+                    part = translated_combined[start_pos:end_pos].strip()
+                    translated_parts.append(part)
+                
+                print(f"[Chunking] Found {len(matches)} markers, got {len(translated_parts)} parts")
+                
+                # 結果を追加
+                for j in range(len(chunk)):
+                    if j < len(translated_parts):
+                        translated_data.append({
+                            "text": translated_parts[j],
+                            "engine": "Google (Chunking)",
+                            "tag": tags[j]
+                        })
+                    else:
+                        # マーカー数が足りない場合は個別翻訳
+                        try:
+                            single = GoogleTranslator(source=source_lang, target='ja').translate(texts[j])
+                            translated_data.append({
+                                "text": single if single else texts[j],
+                                "engine": "Google (Chunking-Partial)",
+                                "tag": tags[j]
+                            })
+                        except:
+                            translated_data.append({
+                                "text": texts[j],
+                                "engine": "Failed",
+                                "tag": tags[j]
+                            })
+            else:
+                # マーカーが見つからない場合、全体を最初の段落として使用し、残りは個別翻訳
+                print(f"[Chunking] No markers found, falling back")
+                translated_data.append({
+                    "text": translated_combined,
+                    "engine": "Google (Chunking-NoMarker)",
+                    "tag": tags[0]
+                })
+                for j in range(1, len(chunk)):
+                    try:
+                        single = GoogleTranslator(source=source_lang, target='ja').translate(texts[j])
+                        translated_data.append({
+                            "text": single if single else texts[j],
+                            "engine": "Google (Fallback)",
+                            "tag": tags[j]
+                        })
+                    except:
+                        translated_data.append({
+                            "text": texts[j],
+                            "engine": "Failed",
+                            "tag": tags[j]
+                        })
+                        
         except Exception as e:
-            print(f"[Chunking] Error in chunk {chunk_idx}: {str(e)}")
-            # エラー時は1段落ずつフォールバック
+            print(f"[Chunking] Error: {str(e)}")
+            # エラー時は1段落ずつ
             for j, p in enumerate(chunk):
                 try:
                     res = GoogleTranslator(source=source_lang, target='ja').translate(p.get("text", ""))
                     translated_data.append({
-                        "text": str(res) if res else p.get("text", ""),
+                        "text": res if res else p.get("text", ""),
                         "engine": "Google (Fallback)",
                         "tag": tags[j]
                     })
-                except Exception as e2:
-                    print(f"[Chunking] Fallback error: {str(e2)}")
+                except:
                     translated_data.append({
                         "text": p.get("text", ""),
                         "engine": "Failed",
                         "tag": tags[j]
                     })
     
-    # Clear progress UI when done
     progress_bar.empty()
     status_area.empty()
     return translated_data
+
 
 
 
