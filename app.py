@@ -570,7 +570,16 @@ def main():
                 with hdr_col2:
                     # Engine 1 Selector
                     engines = ["Google", "DeepL", "MyMemory"] if st.session_state.get("deepl_api_key") else ["Google", "MyMemory"]
-                    current_engine_1_idx = engines.index(engine_1) if engine_1 in engines else 0
+                    
+                    # Fallback detection
+                    is_fallback_1 = "Fallback" in engine_1 or "Failed" in engine_1
+                    display_engine_1 = "Google" if "Google" in engine_1 else engine_1
+                    if "DeepL" in engine_1 and "Fallback" not in engine_1:
+                        display_engine_1 = "DeepL"
+                    elif "MyMemory" in engine_1 and "Fallback" not in engine_1:
+                        display_engine_1 = "MyMemory"
+                    
+                    current_engine_1_idx = engines.index(display_engine_1) if display_engine_1 in engines else 0
                     
                     st.markdown("""
                     <div style="
@@ -590,6 +599,9 @@ def main():
                         key="engine_select_1",
                         label_visibility="collapsed"
                     )
+                    
+                    if is_fallback_1:
+                        st.warning(f"⚠️ {st.session_state.get('engine_1_selected', 'Requested Engine')} でのエラーのため Google にフォールバックしました。")
                     
                     # Re-translate if engine changed
                     # 保存されている前回のエンジンと比較
@@ -614,10 +626,18 @@ def main():
                     if "engine_1_selected" not in st.session_state:
                         st.session_state["engine_1_selected"] = engine_1
                 
-                if is_compare_mode:
+                    if is_compare_mode:
                     with hdr_col3:
                         # Engine 2 Selector
-                        current_engine_2_idx = engines.index(engine_2) if engine_2 in engines else 1
+                        # Fallback detection
+                        is_fallback_2 = "Fallback" in engine_2 or "Failed" in engine_2
+                        display_engine_2 = "Google" if "Google" in engine_2 else engine_2
+                        if "DeepL" in engine_2 and "Fallback" not in engine_2:
+                            display_engine_2 = "DeepL"
+                        elif "MyMemory" in engine_2 and "Fallback" not in engine_2:
+                            display_engine_2 = "MyMemory"
+                            
+                        current_engine_2_idx = engines.index(display_engine_2) if display_engine_2 in engines else 1
                         
                         st.markdown("""
                         <div style="
@@ -637,6 +657,9 @@ def main():
                             key="engine_select_2",
                             label_visibility="collapsed"
                         )
+                        
+                        if is_fallback_2:
+                            st.warning(f"⚠️ {st.session_state.get('engine_2_selected', 'Requested Engine')} エラー → Google")
                         
                         # Re-translate if engine changed
                         # 保存されている前回のエンジンと比較
