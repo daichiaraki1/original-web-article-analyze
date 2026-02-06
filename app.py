@@ -447,31 +447,126 @@ def main():
                 center_blocks = "" # Trans 1
                 right_blocks = ""  # Trans 2 (optional)
                 
-                # --- Header Generation ---
-                # Default Headers
-                h_left = "原文 (ORIGINAL)"
-                h_center = "翻訳 1" if is_compare_mode else "日本語翻訳"
-                h_right = "翻訳 2 (比較)" if is_compare_mode else ""
-                
-                # Update Trans 1 Header with engine name
+                # --- Header with Engine Selectors (Streamlit Components) ---
+                # Get current engine names from translation data
+                engine_1 = ""
+                engine_2 = ""
                 if is_trans and trans_data and len(trans_data) > 0:
-                     eng1 = trans_data[0].get('engine', '') if isinstance(trans_data[0], dict) else ''
-                     if eng1: h_center += f" ({eng1})"
-                elif not is_trans:
-                     h_center = "比較対象記事"
-
-                # Update Trans 2 Header with engine name
+                    engine_1 = trans_data[0].get('engine', 'Google') if isinstance(trans_data[0], dict) else 'Google'
+                    # Clean up fallback text
+                    if "Fallback" in engine_1:
+                        engine_1 = engine_1.split(" ")[0]
                 if is_compare_mode and trans_data_2 and len(trans_data_2) > 0:
-                     eng2 = trans_data_2[0].get('engine', '')
-                     if eng2: h_right += f" ({eng2})"
+                    engine_2 = trans_data_2[0].get('engine', 'MyMemory')
+                    if "Fallback" in engine_2:
+                        engine_2 = engine_2.split(" ")[0]
+                
+                # Streamlit Header Row with Selectors
+                if is_compare_mode:
+                    hdr_col1, hdr_col2, hdr_col3 = st.columns(3)
+                else:
+                    hdr_col1, hdr_col2 = st.columns(2)
+                
+                with hdr_col1:
+                    st.markdown("""
+                    <div style="
+                        background: #f1f5f9;
+                        padding: 12px 16px;
+                        border-radius: 10px 10px 0 0;
+                        font-weight: 700;
+                        color: #475569;
+                        text-transform: uppercase;
+                        font-size: 0.75em;
+                        letter-spacing: 0.5px;
+                    ">原文 (ORIGINAL)</div>
+                    """, unsafe_allow_html=True)
+                
+                with hdr_col2:
+                    # Engine 1 Selector
+                    engines = ["Google", "MyMemory"]
+                    current_engine_1_idx = engines.index(engine_1) if engine_1 in engines else 0
+                    
+                    st.markdown("""
+                    <div style="
+                        background: #f1f5f9;
+                        padding: 8px 16px;
+                        border-radius: 10px 10px 0 0;
+                        font-weight: 700;
+                        color: #475569;
+                        font-size: 0.75em;
+                    ">翻訳 1</div>
+                    """, unsafe_allow_html=True)
+                    
+                    new_engine_1 = st.selectbox(
+                        "翻訳エンジン 1",
+                        engines,
+                        index=current_engine_1_idx,
+                        key="engine_select_1",
+                        label_visibility="collapsed"
+                    )
+                    
+                    # Re-translate if engine changed
+                    if new_engine_1 != engine_1 and st.session_state.get("engine_1_prev") == engine_1:
+                        with st.spinner(f"{new_engine_1} で再翻訳中..."):
+                            st.session_state[t_key] = translate_paragraphs(
+                                src_article.structured_html_parts,
+                                engine_name=new_engine_1,
+                                source_lang=source_lang
+                            )
+                            st.session_state[f"t_ttl_v9_{src_url}"] = translate_paragraphs(
+                                [{"tag": "h1", "text": src_article.title}],
+                                engine_name=new_engine_1,
+                                source_lang=source_lang
+                            )[0]["text"]
+                        st.session_state["engine_1_prev"] = new_engine_1
+                        st.rerun()
+                    st.session_state["engine_1_prev"] = new_engine_1
+                
+                if is_compare_mode:
+                    with hdr_col3:
+                        # Engine 2 Selector
+                        current_engine_2_idx = engines.index(engine_2) if engine_2 in engines else 1
+                        
+                        st.markdown("""
+                        <div style="
+                            background: #f1f5f9;
+                            padding: 8px 16px;
+                            border-radius: 10px 10px 0 0;
+                            font-weight: 700;
+                            color: #475569;
+                            font-size: 0.75em;
+                        ">翻訳 2 (比較)</div>
+                        """, unsafe_allow_html=True)
+                        
+                        new_engine_2 = st.selectbox(
+                            "翻訳エンジン 2",
+                            engines,
+                            index=current_engine_2_idx,
+                            key="engine_select_2",
+                            label_visibility="collapsed"
+                        )
+                        
+                        # Re-translate if engine changed
+                        if new_engine_2 != engine_2 and st.session_state.get("engine_2_prev") == engine_2:
+                            with st.spinner(f"{new_engine_2} で比較用再翻訳中..."):
+                                t_key_2 = f"t_v9_{src_url}_compare"
+                                st.session_state[t_key_2] = translate_paragraphs(
+                                    src_article.structured_html_parts,
+                                    engine_name=new_engine_2,
+                                    source_lang=source_lang
+                                )
+                                st.session_state[f"t_ttl_v9_{src_url}_compare"] = translate_paragraphs(
+                                    [{"tag": "h1", "text": src_article.title}],
+                                    engine_name=new_engine_2,
+                                    source_lang=source_lang
+                                )[0]["text"]
+                            st.session_state["engine_2_prev"] = new_engine_2
+                            st.rerun()
+                        st.session_state["engine_2_prev"] = new_engine_2
+                
+                # Empty header_html since we're using Streamlit components above
+                header_html = ""
 
-                header_html = f"""
-                <div class="trans-unified-header">
-                    <div class="trans-header-cell">{h_left}</div>
-                    <div class="trans-header-cell">{h_center}</div>
-                    {'<div class="trans-header-cell">' + h_right + '</div>' if is_compare_mode else ''}
-                </div>
-                """
 
                 # --- Body Generation ---
                 # Normalize length
