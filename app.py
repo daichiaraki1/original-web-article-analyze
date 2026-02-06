@@ -883,6 +883,7 @@ def main():
                                                     use_container_width=True
                                                 ):
                                                     st.session_state[saved_key] = True
+                                                    st.rerun()  # 即座に「保存済」に更新
                                         except:
                                             st.button("保存", key=f"dl_err_{abs_idx}", disabled=True, use_container_width=True)
                                     else:
@@ -943,7 +944,6 @@ def main():
                 # 画像がまだ読み込まれていない場合のメッセージ
                 st.markdown("""
                 <div style="text-align: center; padding: 60px 40px; background: #f0f9ff; border-radius: 16px; margin: 20px 0; border: 1px solid #bae6fd;">
-                    <div style="font-size: 3em; margin-bottom: 16px;">👆</div>
                     <h3 style="color: #0369a1; margin-bottom: 12px;">「画像を読み込む」ボタンをクリックしてください</h3>
                     <p style="color: #0284c7;">上のボタンをクリックすると、記事内の画像が表示されます。</p>
                 </div>
