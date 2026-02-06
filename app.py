@@ -96,7 +96,23 @@ def main():
             box-shadow: 0 6px 16px rgba(59, 130, 246, 0.45) !important;
         }
 
-
+        /* セレクトボックス (ドロップダウン) のスタイル - 目立たせる */
+        [data-testid="stSelectbox"] > div > div {
+            background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%) !important;
+            border: 2px solid #3b82f6 !important;
+            border-radius: 10px !important;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15) !important;
+            transition: all 0.2s ease !important;
+        }
+        [data-testid="stSelectbox"] > div > div:hover {
+            border-color: #2563eb !important;
+            box-shadow: 0 6px 16px rgba(59, 130, 246, 0.25) !important;
+            transform: translateY(-1px);
+        }
+        /* セレクトボックスの矢印アイコンを目立たせる */
+        [data-testid="stSelectbox"] svg {
+            color: #3b82f6 !important;
+        }
         
         /* 5. タブデザイン (幅を広げる) */
         .stTabs [data-baseweb="tab-list"] {
