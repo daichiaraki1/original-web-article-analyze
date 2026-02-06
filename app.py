@@ -379,7 +379,7 @@ def main():
                     """, unsafe_allow_html=True)
                     
                     # エンジン選択ドロップダウン（選択時に翻訳開始）
-                    engines = ["-- 選択してください --", "Google", "MyMemory"]
+                    engines = ["-- 選択してください --", "Google", "Google (Chunking)", "MyMemory"]
                     selected_engine = st.selectbox(
                         "翻訳エンジン",
                         engines,
@@ -532,7 +532,7 @@ def main():
                 
                 with hdr_col2:
                     # Engine 1 Selector
-                    engines = ["Google", "MyMemory"]
+                    engines = ["Google", "Google (Chunking)", "MyMemory"]
                     current_engine_1_idx = engines.index(engine_1) if engine_1 in engines else 0
                     
                     st.markdown("""
@@ -627,7 +627,7 @@ def main():
                         """, unsafe_allow_html=True)
                         
                         # 既に翻訳1で使っているエンジンとは別のデフォルトを推奨
-                        compare_engines = ["-- 選択してください --", "Google", "MyMemory"]
+                        compare_engines = ["-- 選択してください --", "Google", "Google (Chunking)", "MyMemory"]
                         selected_compare_engine = st.selectbox(
                             "比較エンジン",
                             compare_engines,
