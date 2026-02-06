@@ -272,29 +272,20 @@ def main():
             # if cmp_article checks removed to keep translation view active
             t_key = f"t_v9_{src_url}"
             
+            # 言語マップ（共通で使用）
+            lang_map = {
+                "自動検出": "auto",
+                "中国語 (簡体字)": "zh-CN",
+                "中国語 (繁体字)": "zh-TW",
+                "英語": "en"
+            }
+            
             # 翻訳がまだ実行されていない場合
             if t_key not in st.session_state:
-                # 翻訳実行ボタンを最上部に配置
-                
-                # 翻訳実行ボタンとエンジン選択を配置
-                col1, col2, col3 = st.columns([1, 2, 1])
-                with col2:
-                    st.markdown("<div style='margin-bottom: 5px; font-weight: bold; color: #475569;'>翻訳エンジンを選択</div>", unsafe_allow_html=True)
-                    engine_choice = st.radio(
-                        "翻訳エンジンを選択",
-                        ["Google", "MyMemory"],
-                        key="trans_engine_select",
-                        horizontal=True,
-                        label_visibility="collapsed"
-                    )
-                    
-                    st.markdown("<div style='margin-top: 10px; margin-bottom: 5px; font-weight: bold; color: #475569;'>元記事の言語</div>", unsafe_allow_html=True)
-                    lang_map = {
-                        "自動検出": "auto",
-                        "中国語 (簡体字)": "zh-CN",
-                        "中国語 (繁体字)": "zh-TW",
-                        "英語": "en"
-                    }
+                # 言語選択（コンパクトに配置）
+                lang_col1, lang_col2, lang_col3 = st.columns([1, 2, 1])
+                with lang_col2:
+                    st.markdown("<div style='margin-bottom: 5px; font-weight: bold; color: #475569;'>元記事の言語</div>", unsafe_allow_html=True)
                     lang_choice_label = st.radio(
                         "元記事の言語",
                         list(lang_map.keys()),
@@ -302,15 +293,7 @@ def main():
                         horizontal=True,
                         label_visibility="collapsed"
                     )
-                    source_lang = lang_map[lang_choice_label]
-                    
-                    st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
-                    
-                    if st.button("🌐 翻訳を実行", key="translate_btn", type="primary", use_container_width=True):
-                        with st.spinner(f"{engine_choice} で翻訳中..."):
-                            st.session_state[t_key] = translate_paragraphs(src_article.structured_html_parts, engine_name=engine_choice, source_lang=source_lang)
-                            st.session_state[f"t_ttl_v9_{src_url}"] = translate_paragraphs([{"tag":"h1", "text":src_article.title}], engine_name=engine_choice, source_lang=source_lang)[0]["text"]
-                        st.rerun()
+                source_lang = lang_map[lang_choice_label]
                 
                 st.markdown("<br>", unsafe_allow_html=True)
                 
@@ -330,17 +313,9 @@ def main():
                     }
                     .pre-trans-container {
                         border: 1px solid #e2e8f0;
-                        border-radius: 12px;
+                        border-radius: 0 0 12px 12px;
                         overflow: hidden;
                         background: #ffffff;
-                    }
-                    .pre-trans-header {
-                        background: #f1f5f9;
-                        padding: 12px 20px;
-                        font-weight: 800;
-                        color: #475569;
-                        font-size: 0.8em;
-                        border-bottom: 1px solid #e2e8f0;
                     }
                     .pre-trans-placeholder {
                         display: flex;
@@ -351,18 +326,72 @@ def main():
                         color: #94a3b8;
                         background-color: #f8fafc;
                         border: 2px dashed #e2e8f0;
-                        border-radius: 12px;
+                        border-radius: 0 0 12px 12px;
                         text-align: center;
                     }
                 </style>
                 """, unsafe_allow_html=True)
+                
+                # ヘッダー行（エンジンセレクター付き）
+                hdr_col1, hdr_col2 = st.columns(2)
+                
+                with hdr_col1:
+                    st.markdown("""
+                    <div style="
+                        background: #f1f5f9;
+                        padding: 12px 16px;
+                        border-radius: 10px 10px 0 0;
+                        font-weight: 700;
+                        color: #475569;
+                        text-transform: uppercase;
+                        font-size: 0.75em;
+                        letter-spacing: 0.5px;
+                    ">原文 (ORIGINAL)</div>
+                    """, unsafe_allow_html=True)
+                
+                with hdr_col2:
+                    st.markdown("""
+                    <div style="
+                        background: #f1f5f9;
+                        padding: 8px 16px;
+                        border-radius: 10px 10px 0 0;
+                        font-weight: 700;
+                        color: #475569;
+                        font-size: 0.75em;
+                    ">翻訳エンジンを選択</div>
+                    """, unsafe_allow_html=True)
+                    
+                    # エンジン選択ドロップダウン（選択時に翻訳開始）
+                    engines = ["-- 選択してください --", "Google", "MyMemory"]
+                    selected_engine = st.selectbox(
+                        "翻訳エンジン",
+                        engines,
+                        index=0,
+                        key="engine_select_initial",
+                        label_visibility="collapsed"
+                    )
+                    
+                    # エンジンが選択されたら翻訳を実行
+                    if selected_engine != "-- 選択してください --":
+                        with st.spinner(f"{selected_engine} で翻訳中..."):
+                            st.session_state[t_key] = translate_paragraphs(
+                                src_article.structured_html_parts,
+                                engine_name=selected_engine,
+                                source_lang=source_lang
+                            )
+                            st.session_state[f"t_ttl_v9_{src_url}"] = translate_paragraphs(
+                                [{"tag": "h1", "text": src_article.title}],
+                                engine_name=selected_engine,
+                                source_lang=source_lang
+                            )[0]["text"]
+                        st.rerun()
                 
                 # 左右カラムを作成 (左: 原文, 右: プレースホルダー)
                 pc1, pc2 = st.columns(2)
                 
                 with pc1:
                     # 原文コンテンツの構築
-                    content_html = f"<div class='pre-trans-container'><div class='pre-trans-header'>元記事 (原文)</div>"
+                    content_html = f"<div class='pre-trans-container'>"
                     
                     # タイトル
                     l_title = f"<h3>{src_article.title}</h3><span style='font-size:0.8em; color:#64748b;'>{src_article.publisher}</span>"
@@ -381,9 +410,9 @@ def main():
                     st.markdown("""
                     <div class="pre-trans-placeholder">
                         <div>
-                            <div style="font-size: 3em; margin-bottom: 1rem;">📝</div>
-                            <div style="font-weight:600;">翻訳を実行してください</div>
-                            <div style="font-size:0.85em; margin-top:0.5rem;">上の「翻訳を実行」ボタンをクリックすると<br>ここに日本語訳が表示されます</div>
+                            <div style="font-size: 2.5em; margin-bottom: 1rem; opacity: 0.5;">🌐</div>
+                            <div style="font-weight:600;">エンジンを選択して翻訳を開始</div>
+                            <div style="font-size:0.85em; margin-top:0.5rem;">上のドロップダウンから翻訳エンジンを選択すると<br>自動的に翻訳が開始されます</div>
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
@@ -391,43 +420,9 @@ def main():
                 show_dual_view = False
             else:
                 # 翻訳済みの場合
-                # Define source_lang from session state for comparison translation
-                lang_map = {
-                    "自動検出": "auto",
-                    "中国語 (簡体字)": "zh-CN",
-                    "中国語 (繁体字)": "zh-TW",
-                    "英語": "en"
-                }
+                # source_lang は共通のlang_mapから取得（すでに上で定義済み）
                 current_lang_label = st.session_state.get("src_lang_select", "自動検出")
                 source_lang = lang_map.get(current_lang_label, "auto")
-
-                # === Comparison UI & Processing ===
-                st.divider()
-                st.markdown("##### 🔍 翻訳結果の比較 (オプション)")
-                
-                c_eng_col, c_btn_col = st.columns([2, 2])
-                with c_eng_col:
-                    compare_engine = st.radio(
-                        "比較するエンジン",
-                        ["Google", "MyMemory"],
-                        key="compare_engine_select",
-                        horizontal=True
-                    )
-                with c_btn_col:
-                    st.markdown("<div style='margin-top: 24px'></div>", unsafe_allow_html=True)
-                    if st.button("➕ 比較用翻訳を追加実行", key="compare_btn"):
-                            with st.spinner(f"{compare_engine} で比較用翻訳を実行中..."):
-                                t_key_2 = f"t_v9_{src_url}_compare"
-                                st.session_state[t_key_2] = translate_paragraphs(
-                                    src_article.structured_html_parts, 
-                                    engine_name=compare_engine, 
-                                    source_lang=source_lang
-                                )
-                                # 比較用タイトル翻訳も保存
-                                st.session_state[f"t_ttl_v9_{src_url}_compare"] = translate_paragraphs([{"tag":"h1", "text":src_article.title}], engine_name=compare_engine, source_lang=source_lang)[0]["text"]
-                                # 比較モードフラグ
-                                st.session_state["show_comparison_view"] = True
-                                st.rerun()
 
                 # Check if comparison data exists
                 t_key_2 = f"t_v9_{src_url}_compare"
@@ -461,11 +456,8 @@ def main():
                     if "Fallback" in engine_2:
                         engine_2 = engine_2.split(" ")[0]
                 
-                # Streamlit Header Row with Selectors
-                if is_compare_mode:
-                    hdr_col1, hdr_col2, hdr_col3 = st.columns(3)
-                else:
-                    hdr_col1, hdr_col2 = st.columns(2)
+                # Streamlit Header Row with Selectors (always 3 columns)
+                hdr_col1, hdr_col2, hdr_col3 = st.columns(3)
                 
                 with hdr_col1:
                     st.markdown("""
@@ -563,6 +555,46 @@ def main():
                             st.session_state["engine_2_prev"] = new_engine_2
                             st.rerun()
                         st.session_state["engine_2_prev"] = new_engine_2
+                else:
+                    # 比較モードでない場合：比較翻訳追加セレクター
+                    with hdr_col3:
+                        st.markdown("""
+                        <div style="
+                            background: #f1f5f9;
+                            padding: 8px 16px;
+                            border-radius: 10px 10px 0 0;
+                            font-weight: 700;
+                            color: #475569;
+                            font-size: 0.75em;
+                        ">比較翻訳を追加</div>
+                        """, unsafe_allow_html=True)
+                        
+                        # 既に翻訳1で使っているエンジンとは別のデフォルトを推奨
+                        compare_engines = ["-- 選択してください --", "Google", "MyMemory"]
+                        selected_compare_engine = st.selectbox(
+                            "比較エンジン",
+                            compare_engines,
+                            index=0,
+                            key="engine_select_add_compare",
+                            label_visibility="collapsed"
+                        )
+                        
+                        # エンジンが選択されたら比較翻訳を実行
+                        if selected_compare_engine != "-- 選択してください --":
+                            with st.spinner(f"{selected_compare_engine} で比較翻訳中..."):
+                                t_key_2 = f"t_v9_{src_url}_compare"
+                                st.session_state[t_key_2] = translate_paragraphs(
+                                    src_article.structured_html_parts,
+                                    engine_name=selected_compare_engine,
+                                    source_lang=source_lang
+                                )
+                                st.session_state[f"t_ttl_v9_{src_url}_compare"] = translate_paragraphs(
+                                    [{"tag": "h1", "text": src_article.title}],
+                                    engine_name=selected_compare_engine,
+                                    source_lang=source_lang
+                                )[0]["text"]
+                                st.session_state["show_comparison_view"] = True
+                            st.rerun()
                 
                 # Empty header_html since we're using Streamlit components above
                 header_html = ""
