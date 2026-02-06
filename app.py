@@ -332,8 +332,9 @@ def main():
                 </style>
                 """, unsafe_allow_html=True)
                 
-                # ヘッダー行（エンジンセレクター付き）
-                hdr_col1, hdr_col2 = st.columns(2)
+                # ヘッダー行（3列：原文、翻訳1、比較翻訳）
+                # 比較翻訳は初期状態では狭い
+                hdr_col1, hdr_col2, hdr_col3 = st.columns([5, 5, 2])
                 
                 with hdr_col1:
                     st.markdown("""
@@ -358,7 +359,7 @@ def main():
                         font-weight: 700;
                         color: #475569;
                         font-size: 0.75em;
-                    ">翻訳エンジンを選択</div>
+                    ">翻訳 1</div>
                     """, unsafe_allow_html=True)
                     
                     # エンジン選択ドロップダウン（選択時に翻訳開始）
@@ -386,8 +387,21 @@ def main():
                             )[0]["text"]
                         st.rerun()
                 
-                # 左右カラムを作成 (左: 原文, 右: プレースホルダー)
-                pc1, pc2 = st.columns(2)
+                with hdr_col3:
+                    st.markdown("""
+                    <div style="
+                        background: #f8fafc;
+                        padding: 8px 12px;
+                        border-radius: 10px 10px 0 0;
+                        font-weight: 700;
+                        color: #94a3b8;
+                        font-size: 0.7em;
+                        text-align: center;
+                    ">比較翻訳</div>
+                    """, unsafe_allow_html=True)
+                
+                # 3列コンテンツエリア（比較翻訳は狭い）
+                pc1, pc2, pc3 = st.columns([5, 5, 2])
                 
                 with pc1:
                     # 原文コンテンツの構築
@@ -406,13 +420,36 @@ def main():
                     st.markdown(content_html, unsafe_allow_html=True)
                     
                 with pc2:
-                    # 右側：翻訳待ちプレースホルダー
+                    # 翻訳1プレースホルダー
                     st.markdown("""
                     <div class="pre-trans-placeholder">
                         <div>
                             <div style="font-size: 2.5em; margin-bottom: 1rem; opacity: 0.5;">🌐</div>
-                            <div style="font-weight:600;">エンジンを選択して翻訳を開始</div>
-                            <div style="font-size:0.85em; margin-top:0.5rem;">上のドロップダウンから翻訳エンジンを選択すると<br>自動的に翻訳が開始されます</div>
+                            <div style="font-weight:600;">エンジンを選択</div>
+                            <div style="font-size:0.85em; margin-top:0.5rem;">上のドロップダウンから<br>翻訳エンジンを選択</div>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with pc3:
+                    # 比較翻訳プレースホルダー（狭いバージョン）
+                    st.markdown("""
+                    <div style="
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        height: 100%;
+                        min-height: 400px;
+                        color: #cbd5e1;
+                        background-color: #f8fafc;
+                        border: 1px dashed #e2e8f0;
+                        border-radius: 0 0 12px 12px;
+                        text-align: center;
+                        font-size: 0.75em;
+                    ">
+                        <div style="padding: 8px;">
+                            <div style="font-size: 1.5em; margin-bottom: 0.5rem;">➕</div>
+                            <div>翻訳1完了後<br>選択可能</div>
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
@@ -456,8 +493,12 @@ def main():
                     if "Fallback" in engine_2:
                         engine_2 = engine_2.split(" ")[0]
                 
-                # Streamlit Header Row with Selectors (always 3 columns)
-                hdr_col1, hdr_col2, hdr_col3 = st.columns(3)
+                # Streamlit Header Row with Selectors
+                # 比較モードでは三等分、そうでなければ比較列は狭い
+                if is_compare_mode:
+                    hdr_col1, hdr_col2, hdr_col3 = st.columns(3)
+                else:
+                    hdr_col1, hdr_col2, hdr_col3 = st.columns([5, 5, 2])
                 
                 with hdr_col1:
                     st.markdown("""
@@ -656,7 +697,8 @@ def main():
                         right_blocks += f"<div class='trans-paragraph-block' id='trans2-{row_id}'>{r_content}</div>"
 
                 # --- CSS Injection for Columns ---
-                grid_cols = "1fr 1fr 1fr" if is_compare_mode else "1fr 1fr"
+                # 比較モードでは三等分、そうでなければ3列目は狭い
+                grid_cols = "1fr 1fr 1fr" if is_compare_mode else "5fr 5fr 2fr"
                 extra_css = f"""
                 <style>
                     .trans-grid-container {{ grid-template-columns: {grid_cols} !important; }}
@@ -742,7 +784,7 @@ def main():
                     <div class="trans-column-wrapper">
                         {center_blocks}
                     </div>
-                    {f'<div class="trans-column-wrapper">{right_blocks}</div>' if is_compare_mode else ''}
+                    {f'<div class="trans-column-wrapper">{right_blocks}</div>' if is_compare_mode else '<div class="trans-column-wrapper" style="background:#f8fafc; display:flex; align-items:center; justify-content:center; color:#cbd5e1; font-size:0.8em;"><div style="text-align:center; padding:20px;"><div style="font-size:2em; margin-bottom:10px;">➕</div><div>上のセレクターで<br>比較翻訳を追加</div></div></div>'}
                 </div>
             </div>
         </div>
