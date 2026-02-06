@@ -751,10 +751,35 @@ def main():
                     target_urls = [image_urls[i] for i in current_sel_indices]
                     sel_count = len(current_sel_indices)
                     
-                    # session_state.sel_imgs も一応同期しておく（他の場所で使っている場合のため）
+                    # session_state.sel_imgs も一応同期しておく
                     st.session_state.sel_imgs = set(current_sel_indices)
                     
-                    if sel_count > 0:
+                    if sel_count == 1:
+                        # 1枚のみ選択: 直接ダウンロード（zip化しない）
+                        single_url = target_urls[0]
+                        single_idx = current_sel_indices[0]
+                        img_b64_single, _, img_fmt_single = fetch_image_data_v10(single_url, base_url)
+                        if img_b64_single:
+                            import base64
+                            try:
+                                b64_data = img_b64_single.split(",", 1)[1]
+                                img_bytes_single = base64.b64decode(b64_data)
+                                ext = (img_fmt_single or "jpg").lower()
+                                if ext == "jpeg": ext = "jpg"
+                                st.download_button(
+                                    label=f"ダウンロード (1枚)",
+                                    data=img_bytes_single,
+                                    file_name=f"image_{single_idx + 1}.{ext}",
+                                    mime=f"image/{img_fmt_single.lower() if img_fmt_single else 'jpeg'}",
+                                    key="dl_btn_single_v9",
+                                    use_container_width=True
+                                )
+                            except:
+                                st.button("ダウンロード (1枚)", disabled=True, use_container_width=True)
+                        else:
+                            st.button("ダウンロード (1枚)", disabled=True, use_container_width=True)
+                    elif sel_count > 1:
+                        # 2枚以上: ZIP形式でダウンロード
                         zip_bytes = create_images_zip(target_urls, base_url)
                         if zip_bytes:
                             st.download_button(
@@ -820,24 +845,44 @@ def main():
 
                                 with h_c2:
                                     # Save (Download) Button - Individual Download
+                                    # Check if already saved
+                                    saved_key = f"saved_v9_{abs_idx}"
+                                    is_saved = st.session_state.get(saved_key, False)
+                                    
                                     if img_b64:
-                                        # Extract raw bytes from base64 data URL
                                         import base64
                                         try:
-                                            # img_b64 format: "data:image/jpeg;base64,/9j/4AAQ..."
                                             b64_data = img_b64.split(",", 1)[1]
                                             img_bytes = base64.b64decode(b64_data)
                                             ext = img_fmt.lower() if img_fmt else "jpg"
                                             if ext == "jpeg":
                                                 ext = "jpg"
-                                            st.download_button(
-                                                label="保存",
-                                                data=img_bytes,
-                                                file_name=f"image_{abs_idx + 1}.{ext}",
-                                                mime=f"image/{img_fmt.lower() if img_fmt else 'jpeg'}",
-                                                key=f"dl_single_{abs_idx}",
-                                                use_container_width=True
-                                            )
+                                            
+                                            if is_saved:
+                                                # Already saved - show disabled state
+                                                st.markdown("""
+                                                <div style="
+                                                    padding: 6px 12px;
+                                                    background: #dcfce7;
+                                                    border: 1px solid #86efac;
+                                                    border-radius: 8px;
+                                                    text-align: center;
+                                                    color: #16a34a;
+                                                    font-weight: 600;
+                                                    font-size: 0.85em;
+                                                ">✓ 保存済</div>
+                                                """, unsafe_allow_html=True)
+                                            else:
+                                                # Not yet saved - show download button
+                                                if st.download_button(
+                                                    label="保存",
+                                                    data=img_bytes,
+                                                    file_name=f"image_{abs_idx + 1}.{ext}",
+                                                    mime=f"image/{img_fmt.lower() if img_fmt else 'jpeg'}",
+                                                    key=f"dl_single_{abs_idx}",
+                                                    use_container_width=True
+                                                ):
+                                                    st.session_state[saved_key] = True
                                         except:
                                             st.button("保存", key=f"dl_err_{abs_idx}", disabled=True, use_container_width=True)
                                     else:
