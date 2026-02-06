@@ -114,6 +114,10 @@ def _translate_chunk(text: str, engine_name: str, source_lang: str, deepl_api_ke
                 else:
                     deepl_source = s_upper
             
+            # Check source != target (DeepL doesn't support JA -> JA)
+            if deepl_source == 'JA':
+                return text, "DeepL (Skipped: Source=Target)"
+            
             # Construct init arguments
             init_args = {
                 'api_key': deepl_api_key,

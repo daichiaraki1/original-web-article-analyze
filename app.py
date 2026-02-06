@@ -300,6 +300,11 @@ def main():
             if t_key not in st.session_state:
                 # 言語選択とDeepL API設定
                 lang_col1, lang_col2, lang_col3 = st.columns([1, 2, 1])
+                
+                # 自動判定: WeChat等の場合はデフォルトを中国語にする
+                if "src_lang_select" not in st.session_state and "weixin.qq.com" in src_url:
+                    st.session_state["src_lang_select"] = "中国語 (簡体字)"
+                
                 with lang_col2:
                     st.markdown("<div style='margin-bottom: 5px; font-weight: bold; color: #475569;'>元記事の言語</div>", unsafe_allow_html=True)
                     lang_choice_label = st.radio(
