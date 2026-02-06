@@ -105,29 +105,39 @@ def _translate_chunk(text: str, engine_name: str, source_lang: str, deepl_api_ke
         if not deepl_api_key:
             return text, "Failed (No API Key)"
         try:
-            # DeepLの言語コード変換
-            deepl_source = source_lang.upper() if source_lang != 'auto' else None
-            if deepl_source == 'ZH-CN':
-                deepl_source = 'ZH'
-            elif deepl_source == 'ZH-TW':
-                deepl_source = 'ZH'
+            # DeepL translation
+            deepl_source = None
+            if source_lang != 'auto':
+                s_upper = source_lang.upper()
+                if s_upper in ['ZH-CN', 'ZH-TW', 'ZH-HANS', 'ZH-HANT']:
+                    deepl_source = 'ZH'
+                else:
+                    deepl_source = s_upper
             
-            res = DeeplTranslator(
-                api_key=deepl_api_key,
-                source=deepl_source,
-                target='JA',
-                use_free_api=True  # 無料版API対応
-            ).translate(text)
+            # Construct init arguments
+            init_args = {
+                'api_key': deepl_api_key,
+                'target': 'JA',
+                'use_free_api': True
+            }
+            if deepl_source:
+                init_args['source'] = deepl_source
+            
+            res = DeeplTranslator(**init_args).translate(text)
             return (res if res else text), "DeepL"
         except Exception as e:
-            # Pro版APIの場合を試す
+            # Try Pro API
             try:
-                res = DeeplTranslator(
-                    api_key=deepl_api_key,
-                    source=deepl_source,
-                    target='JA',
-                    use_free_api=False
-                ).translate(text)
+                # Re-construct args for PRO
+                init_args = {
+                    'api_key': deepl_api_key,
+                    'target': 'JA',
+                    'use_free_api': False
+                }
+                if deepl_source:
+                    init_args['source'] = deepl_source
+                
+                res = DeeplTranslator(**init_args).translate(text)
                 return (res if res else text), "DeepL (Pro)"
             except Exception as e:
                 # エラー（Googleへのフォールバックは行わない）
