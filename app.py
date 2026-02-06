@@ -886,17 +886,22 @@ def main():
                                     is_saved = st.session_state.get(saved_key, False)
                                     
                                     if is_saved:
-                                        # Already saved - show completed state
+                                        # Already saved - show completed state (same height as button)
                                         st.markdown("""
                                         <div style="
-                                            padding: 6px 12px;
-                                            background: #dcfce7;
-                                            border: 1px solid #86efac;
-                                            border-radius: 8px;
+                                            padding: 8px 12px;
+                                            min-height: 38px;
+                                            background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+                                            border: 2px solid #86efac;
+                                            border-radius: 10px;
                                             text-align: center;
                                             color: #16a34a;
                                             font-weight: 600;
-                                            font-size: 0.85em;
+                                            font-size: 0.9em;
+                                            display: flex;
+                                            align-items: center;
+                                            justify-content: center;
+                                            box-sizing: border-box;
                                         ">✓ 保存済</div>
                                         """, unsafe_allow_html=True)
                                     elif img_b64:
