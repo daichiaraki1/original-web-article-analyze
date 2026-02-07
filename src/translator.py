@@ -1,7 +1,8 @@
 from typing import List
 import streamlit as st
 import re
-from deep_translator import GoogleTranslator, MyMemoryTranslator, DeeplTranslator
+import requests
+from deep_translator import GoogleTranslator, MyMemoryTranslator
 
 # Google翻訳の文字数制限（安全マージンを取って4500文字）
 CHAR_LIMIT = 4500
