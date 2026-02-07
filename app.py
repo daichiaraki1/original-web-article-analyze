@@ -581,6 +581,47 @@ def main():
             else:
                 settings_section_placeholder.empty() # Clear settings UI in result view logic
                 
+                # FORCE CLEAR GHOST UI via JS
+                # Streamlit sometimes fails to remove elements. This script forces removal of the old settings block.
+                # We target the specific text unique to the old UI.
+                st.components.v1.html("""
+                    <script>
+                        // Helper to find and remove elements containing specific text
+                        function removeGhostElements() {
+                            const elements = window.parent.document.querySelectorAll('*');
+                            for (let i = 0; i < elements.length; i++) {
+                                const el = elements[i];
+                                // Check if element contains the specific ghost text and is NOT the main script
+                                if (el.shadowRoot) continue; // Skip shadow roots for now
+                                if (el.tagName === 'SCRIPT' || el.tagName === 'STYLE') continue;
+                                
+                                // Target the "DeepL Usage" section specifically
+                                if (el.innerText && el.innerText.includes('DeepL使用状況 (月次)') && el.innerText.includes('Render Count')) {
+                                    // Found a potential ghost. Check if it's the "old" one (Count 1 at bottom? Hard to detect structure)
+                                    // Just hide it if found in this phase (result phase)
+                                    // But wait, we don't want to hide legitimate stuff if we re-add it?
+                                    // Actually, in Result View, NO DeepL usage UI should be visible at all.
+                                    el.style.display = 'none';
+                                    console.log("Ghost UI hidden:", el);
+                                }
+                                
+                                // Also target the "API Key Settings" expander title if it persists
+                                if (el.innerText && el.innerText.includes('DeepL APIキー設定') && el.tagName === 'DIV') {
+                                     // Be careful not to hide if we are in Settings view... but we are in ELSE block (Result view).
+                                     // So hiding it is safe.
+                                     // Find the parent streamlit expander container?
+                                     // Actually just hiding the text might leave a box.
+                                     // Let's rely on the broader check.
+                                }
+                            }
+                        }
+                        // Run immediately and after a short delay
+                        removeGhostElements();
+                        setTimeout(removeGhostElements, 500);
+                        setTimeout(removeGhostElements, 2000);
+                    </script>
+                """, height=0)
+
                 # 翻訳済みの場合
                 # source_lang は共通のlang_mapから取得（すでに上で定義済み）
                 current_lang_label = st.session_state.get("src_lang_select", "自動検出")
