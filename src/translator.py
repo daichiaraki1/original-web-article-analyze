@@ -279,13 +279,6 @@ def render_deepl_usage_ui(api_key: str, placeholder=None):
         placeholder = st.container()
 
     with placeholder.container():
-        # Debug: Explicit Counter
-        if "render_count_debug" not in st.session_state:
-            st.session_state.render_count_debug = 0
-        st.session_state.render_count_debug += 1
-        current_count = st.session_state.render_count_debug
-        
-        st.markdown(f"**[DEBUG] Render Count: {current_count}**")
     
         if not api_key:
             return

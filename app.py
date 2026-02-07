@@ -394,22 +394,23 @@ def main():
                                 del st.session_state["deepl_usage_cache"]
                             auth_changed = True
                 
-                # Update: Move status area OUTSIDE the expander to prevent ghosting/zombie elements
-                # caused by nested complex containers (Col -> Expander -> Empty -> Container).
-                settings_status_area = st.empty()
+                # Update: Use separate explicit placeholders to avoid nesting issues
+                message_placeholder = st.empty()
+                usage_placeholder = st.empty()
                 
-                with settings_status_area.container():
-                    # 1. 保存/クリアのメッセージ表示
-                    if auth_changed:
+                # 1. 保存/クリアのメッセージ表示
+                if auth_changed:
+                    with message_placeholder.container():
                         if deepl_key_input:
                             st.success("✅ 保存しました")
                         else:
                             st.info("クリアしました")
 
-                    # 2. 自動的に残量を確認・表示（キーがある場合）
-                    saved_key = st.session_state.get("deepl_api_key")
-                    if saved_key:
-                        render_deepl_usage_ui(saved_key, None)
+                # 2. 自動的に残量を確認・表示（キーがある場合）
+                saved_key = st.session_state.get("deepl_api_key")
+                if saved_key:
+                    # Pass the placeholder directly
+                    render_deepl_usage_ui(saved_key, usage_placeholder)
                 
                 if 'lang_choice_label' not in locals():
                     # Fallback or error handling
