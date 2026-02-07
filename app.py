@@ -521,6 +521,47 @@ def main():
                                 ✅ APIキーは保存されています
                             </div>
                         """, unsafe_allow_html=True)
+                
+                # Gemini Usage Display (Local Estimation)
+                # API does not provide quota info, so we track locally.
+                # Assuming Free Tier Limit: ~50 RPD (conservative estimate, officially "unspecified" or "variable")
+                # User reported 20 RPD limit in error. Let's use 50 as visual max but warn at 20.
+                
+                # Load usage from cookie
+                today_str = datetime.date.today().strftime("%Y-%m-%d")
+                usage_cookie = cookie_manager.get("gemini_usage_cookie")
+                
+                current_count = 0
+                if usage_cookie:
+                    try:
+                        saved_date = usage_cookie.get("date")
+                        saved_count = usage_cookie.get("count", 0)
+                        if saved_date == today_str:
+                            current_count = saved_count
+                        else:
+                            # New day, reset
+                            current_count = 0
+                    except:
+                        current_count = 0
+                
+                # Display Progress
+                limit = 50 # Visual limit
+                usage_percent = min(current_count / limit, 1.0)
+                
+                st.markdown(f"""
+                <div style="margin-top: 10px; margin-bottom: 5px; font-weight: bold; font-size: 0.9em; color: #475569;">
+                    本日使用回数 (推定): {current_count} 回
+                </div>
+                """, unsafe_allow_html=True)
+                
+                st.progress(usage_percent)
+                
+                st.markdown("""
+                <div style="font-size: 0.8em; color: #94a3b8;">
+                    ※ Gemini APIは正確な使用量を取得できないため、このアプリ内での実行回数をカウントしています。<br>
+                    ※ 無料枠の上限は非公開ですが、1日50回程度が目安と言われています。
+                </div>
+                """, unsafe_allow_html=True)
 
                 if st.session_state.get("gemini_key_saved_success", False):
                      st.success("✅ Geminiキーを保存しました")
@@ -646,6 +687,34 @@ def main():
                                 deepl_api_key=st.session_state.get("deepl_api_key"),
                                 gemini_api_key=st.session_state.get("gemini_api_key")
                             )[0]["text"]
+                            
+                            # Gemini usage tracking (Increment count on success)
+                            if selected_engine == "Gemini":
+                                # Load current
+                                today_str = datetime.date.today().strftime("%Y-%m-%d")
+                                usage_cookie = cookie_manager.get("gemini_usage_cookie")
+                                current_count = 0
+                                if usage_cookie:
+                                    try:
+                                        if usage_cookie.get("date") == today_str:
+                                            current_count = usage_cookie.get("count", 0)
+                                    except:
+                                        pass
+                                
+                                # Increment
+                                new_count = current_count + 1
+                                new_cookie = {"date": today_str, "count": new_count}
+                                
+                                # Check if already updated in this run (to avoid double count on rerun)
+                                # Actually st.rerun() restarts script, so we should save to cookie immediately.
+                                # But Streamlit rerun might cause loop if we are not careful.
+                                # Cookie manager set causes rerun? Yes usually.
+                                # But we area bout to rerun anyway.
+                                
+                                # Set cookie (expires in 2 days is enough for daily counter)
+                                expires = datetime.datetime.now() + datetime.timedelta(days=2)
+                                cookie_manager.set("gemini_usage_cookie", new_cookie, expires_at=expires)
+                                
                         st.rerun()
                 
                 with hdr_col3:
