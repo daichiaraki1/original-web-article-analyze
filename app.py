@@ -38,7 +38,7 @@ def main():
         st.session_state["deepl_api_key"] = cookie_key
 
     # Gemini
-    cookie_gemini = cookies.get("gemini_api_key_cookie") if cookies else None
+    cookie_gemini = cookies.get("gemini_v9_key") if cookies else None
     if cookie_gemini and not st.session_state.get("gemini_api_key"):
         st.session_state["gemini_api_key"] = cookie_gemini
     
@@ -511,7 +511,10 @@ def main():
                         
                         # Save to cookie for 30 days
                         expires = datetime.datetime.now() + datetime.timedelta(days=30)
-                        cookie_manager.set("gemini_api_key_cookie", gemini_key_input, expires_at=expires, path="/")
+                        cookie_manager.set("gemini_v9_key", gemini_key_input, expires_at=expires)
+                        
+                        import time
+                        time.sleep(0.5) # Wait for cookie to be set
                         
                         st.session_state["gemini_key_saved_success"] = True
                         st.rerun()
