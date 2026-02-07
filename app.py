@@ -11,6 +11,15 @@ if 'src.translator' in sys.modules:
 from src.translator import translate_paragraphs, get_deepl_usage, render_deepl_usage_ui
 from src.utils import create_images_zip, fetch_image_data_v10, make_diff_html, detect_language
 
+import extra_streamlit_components as stx
+
+# Add function to manage cookies
+@st.cache_resource
+def get_manager():
+    return stx.CookieManager()
+
+cookie_manager = get_manager()
+
 # --- メイン UI ---
 def main():
     st.set_page_config(layout="wide", page_title="中国メディア解析ツール")
@@ -367,19 +376,11 @@ def main():
                      st.rerun()
                 
 import datetime
-import extra_streamlit_components as stx
-
-# Add function to manage cookies
-def get_manager():
-    return stx.CookieManager()
-
-cookie_manager = get_manager()
-
-# Check for cookie-stored API key on load
-cookie_key = cookie_manager.get("deepl_api_key_cookie")
-if cookie_key and not st.session_state.get("deepl_api_key"):
-    st.session_state["deepl_api_key"] = cookie_key
-    # Optional: trigger rerender if needed, but session state update usually suffices for next interaction
+            # Check for cookie-stored API key on load
+            # Note: initialization must be at top level, which we'll handle in next chunk
+            cookie_key = cookie_manager.get("deepl_api_key_cookie")
+            if cookie_key and not st.session_state.get("deepl_api_key"):
+                st.session_state["deepl_api_key"] = cookie_key
         
             # DeepL APIキー入力（折りたたみ形式）
             with lang_col2.expander("🔑 DeepL APIキー設定（任意）", expanded=False):
