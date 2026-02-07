@@ -330,8 +330,8 @@ def main():
                         # WeChatの場合は、英語以外（unknown, ja, mixed, ko等）はすべて中国語とみなす
                         st.session_state["src_lang_select"] = "中国語 (簡体字)"
                 
-                # Debug Info (Temporary)
-                st.info(f"Debug: Detected={detected_code}, URL_WeChat={'weixin.qq.com' in src_url}, Selected={st.session_state.get('src_lang_select', 'None')}")
+                # Debug Info (Temporary) - Removed
+                # st.info(f"Debug: Detected={detected_code}, URL_WeChat={'weixin.qq.com' in src_url}, Selected={st.session_state.get('src_lang_select', 'None')}")
                 
                 with lang_col2:
                     st.markdown("<div style='margin-bottom: 5px; font-weight: bold; color: #475569;'>元記事の言語</div>", unsafe_allow_html=True)

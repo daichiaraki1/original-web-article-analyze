@@ -135,15 +135,6 @@ def _translate_chunk(text: str, engine_name: str, source_lang: str, deepl_api_ke
             try:
                 resp = requests.post(base_url, data=params, headers=headers, timeout=10)
                 
-                if "deepl_debug_shown" not in st.session_state:
-                    st.session_state["deepl_debug_shown"] = True
-                    if resp.status_code != 200:
-                         st.error(f"DeepL Error Debug: {resp.text}")
-                    else:
-                         # Success debug: show what we got
-                         st.toast("DeepL API Success (First Chunk)")
-                         st.code(str(resp.json())[:500], language='json')
-                
                 if resp.status_code == 200:
                     data = resp.json()
                     translations = data.get('translations', [])
