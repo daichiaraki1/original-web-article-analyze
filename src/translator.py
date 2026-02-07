@@ -176,16 +176,37 @@ def translate_paragraphs(paragraphs: List[dict], engine_name="Google", source_la
         return translated_data
     
     # Progress UI elements
-    progress_bar = st.progress(0)
+    progress_placeholder = st.empty()
     status_area = st.empty()
     
     for i, p in enumerate(paragraphs):
         text = p.get("text", "")
         tag = p.get("tag", "p")
         
-        # Update progress bar
+        # Update custom progress bar
         progress = (i + 1) / total
-        progress_bar.progress(progress, text=f"翻訳中: {i+1}/{total} 段落")
+        percent = int(progress * 100)
+        
+        bar_html = f"""
+        <div style="margin-bottom: 5px; font-weight: bold; color: #475569;">翻訳中: {i+1}/{total} 段落</div>
+        <div style="
+            background-color: #f1f5f9;
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        ">
+            <div style="
+                background-color: #3b82f6;
+                width: {percent}%;
+                height: 100%;
+                border-radius: 4px;
+                transition: width 0.3s ease;
+            "></div>
+        </div>
+        """
+        progress_placeholder.markdown(bar_html, unsafe_allow_html=True)
         
         # 長文の場合は分割処理中であることを表示
         char_info = f" ({len(text)}文字)" if len(text) > CHAR_LIMIT else ""
@@ -212,7 +233,7 @@ def translate_paragraphs(paragraphs: List[dict], engine_name="Google", source_la
         })
     
     # Clear progress UI when done
-    progress_bar.empty()
+    progress_placeholder.empty()
     status_area.empty()
     return translated_data
 
