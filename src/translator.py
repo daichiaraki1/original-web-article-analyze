@@ -208,14 +208,15 @@ def _translate_chunk(text: str, engine_name: str, source_lang: str, deepl_api_ke
         except Exception as e:
             # Revert to simple error return, remove UI error for production feel unless debugging needed
             # st.error(f"Gemini Error: {str(e)}") 
-            return text, f"Gemini (Error: {str(e)[:50]})"
+            return text, f"Gemini (Error: {str(e)})" # Show full error for now
     
     return text, "None"
 
 
-def translate_paragraphs(paragraphs: List[dict], engine_name="Google", source_lang="auto", deepl_api_key: str = None, gemini_api_key: str = None):
+def translate_paragraphs(paragraphs: List[dict], engine_name="Google", source_lang="auto", deepl_api_key: str = None, gemini_api_key: str = None, output_placeholder=None):
     """
     段落ごとに翻訳する（長い段落は自動分割）
+    output_placeholder: Streamlit placeholder to render results incrementally
     """
     translated_data = []
     total = len(paragraphs)
@@ -224,9 +225,20 @@ def translate_paragraphs(paragraphs: List[dict], engine_name="Google", source_la
         return translated_data
     
     # Progress UI elements
+    # If output_placeholder is provided, we might want to render the full table there
+    # But constructing the full table incrementally is complex.
+    # Instead, we can render a simple list or markdown of what's done so far.
+    # A better approach for "pre-view" is just printing the text.
+    
     progress_placeholder = st.empty()
     status_area = st.empty()
     
+    # Header for streaming view
+    if output_placeholder:
+        output_placeholder.markdown("### 翻訳プレビュー (生成中...)")
+    
+    streaming_text = ""
+
     for i, p in enumerate(paragraphs):
         text = p.get("text", "")
         tag = p.get("tag", "p")
@@ -272,13 +284,47 @@ def translate_paragraphs(paragraphs: List[dict], engine_name="Google", source_la
         """, unsafe_allow_html=True)
         
         # 翻訳実行（長文は自動分割）
+        # Geminiの場合はレート制限対策として少し待機
+        if engine_name == "Gemini":
+            time.sleep(2.0) # Rate limit wait
+        
         res_text, used_engine = translate_single_text(text, engine_name, source_lang, deepl_api_key, gemini_api_key)
         
-        translated_data.append({
+        # エラー判定
+        is_error = False
+        if engine_name == "Gemini" and ("Error" in used_engine or "Failed" in used_engine):
+             is_error = True
+             status_area.error(f"翻訳が中断されました: {used_engine}")
+        
+        # Append to result list
+        item = {
             "text": str(res_text),
             "engine": used_engine,
             "tag": tag
-        })
+        }
+        translated_data.append(item)
+
+        # Update Streaming UI
+        if output_placeholder:
+            # Simple markdown concatenation for preview
+            # This allows user to see text as it arrives
+            if tag == 'h2':
+                streaming_text += f"\n\n## {res_text}\n\n"
+            elif tag == 'h3':
+                streaming_text += f"\n\n### {res_text}\n\n"
+            else:
+                streaming_text += f"\n\n{res_text}\n\n"
+            
+            # Show current state
+            with output_placeholder.container():
+                st.markdown(streaming_text)
+                if is_error:
+                    st.error(f"⚠️ エラーにより中断: {used_engine}")
+
+        if is_error:
+             break
+
+    return translated_data
     
     # Clear progress UI when done
     progress_placeholder.empty()
