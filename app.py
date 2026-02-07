@@ -2,6 +2,12 @@ import textwrap
 import streamlit as st
 import streamlit.components.v1 as components
 from src.scraper import load_article_v9
+import sys
+import importlib
+# Force reload to clear stale cache
+if 'src.translator' in sys.modules:
+    importlib.reload(sys.modules['src.translator'])
+
 from src.translator import translate_paragraphs, get_deepl_usage, render_deepl_usage_ui
 from src.utils import create_images_zip, fetch_image_data_v10, make_diff_html, detect_language
 
