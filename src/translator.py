@@ -1,5 +1,6 @@
 from typing import List
 import streamlit as st
+import json
 import re
 import requests
 import time
@@ -213,6 +214,85 @@ def _translate_chunk(text: str, engine_name: str, source_lang: str, deepl_api_ke
     return text, "None"
 
 
+def translate_batch_gemini(paragraphs: List[dict], source_lang: str, gemini_api_key: str, output_placeholder, status_area):
+    """
+    Translate all paragraphs in a single batch request to avoid quota limits.
+    """
+    if not paragraphs:
+        return []
+
+    # Prepare batch input
+    texts = [p.get("text", "") for p in paragraphs]
+    
+    # Configure Gemini
+    genai.configure(api_key=gemini_api_key)
+    model = genai.GenerativeModel(
+        'gemini-3-flash-preview',
+        generation_config={"response_mime_type": "application/json"}
+    )
+    
+    # Prompt for JSON array
+    prompt = f"""
+    You are a professional translator. 
+    Translate the following list of texts into natural Japanese.
+    Keep the formatting and tone suitable for news articles.
+    
+    Input Texts:
+    {json.dumps(texts, ensure_ascii=False)}
+    
+    IMPORTANT: Return ONLY a raw JSON array of strings. 
+    The array length MUST match the input array length exactly (1-to-1 mapping).
+    """
+
+    status_area.info(f"Gemini (Batch Mode) で一括翻訳中... ({len(texts)} 段落)")
+    if output_placeholder:
+        output_placeholder.markdown("### ⏳ Geminiで一括翻訳中... (しばらくお待ちください)")
+
+    try:
+        response = model.generate_content(prompt)
+        translated_texts = json.loads(response.text)
+        
+        # Verify length
+        if len(translated_texts) != len(texts):
+            # Fallback: simple split or just error
+            # If mismatch, we can't map reliably. 
+            # Try to return what we have or pad
+            status_area.warning("Gemini: 翻訳結果の数が一致しませんでした。一部整合性が取れない可能性があります。")
+        
+        results = []
+        streaming_text = ""
+        
+        for i, p in enumerate(paragraphs):
+            t_text = translated_texts[i] if i < len(translated_texts) else p.get("text", "")
+            
+            item = {
+                "text": t_text,
+                "engine": "Gemini (Batch)",
+                "tag": p.get("tag", "p")
+            }
+            results.append(item)
+            
+            # Simulate streaming update for UX (optional, but good for confirmation)
+            tag = p.get("tag", "p")
+            if tag == 'h2':
+                streaming_text += f"\n\n## {t_text}\n\n"
+            elif tag == 'h3':
+                streaming_text += f"\n\n### {t_text}\n\n"
+            else:
+                streaming_text += f"\n\n{t_text}\n\n"
+
+        if output_placeholder:
+             output_placeholder.markdown(streaming_text)
+
+        status_area.success(f"Gemini (Batch) 翻訳完了！")
+        return results
+
+    except Exception as e:
+        status_area.error(f"Gemini Batch Error: {str(e)}")
+        # Raise to let the caller handle fallout
+        raise e
+
+
 def translate_paragraphs(paragraphs: List[dict], engine_name="Google", source_lang="auto", deepl_api_key: str = None, gemini_api_key: str = None, output_placeholder=None):
     """
     段落ごとに翻訳する（長い段落は自動分割）
@@ -233,6 +313,19 @@ def translate_paragraphs(paragraphs: List[dict], engine_name="Google", source_la
     progress_placeholder = st.empty()
     status_area = st.empty()
     
+    # Gemini Optimization: Batch Translation
+    # If engine is Gemini, we use a single request (or few chunks) to avoid Rate Limits (15 RPM / 20 RPD)
+    if engine_name == "Gemini":
+        try:
+            return translate_batch_gemini(paragraphs, source_lang, gemini_api_key, output_placeholder, status_area)
+        except Exception as e:
+            # If batch fails, show error and stop
+            status_area.error(f"Gemini Batch Error: {str(e)[:100]}...")
+            # Return partial/empty with error
+            return [{"text": p.get("text", ""), "engine": f"Gemini (Batch Error: {str(e)[:50]})", "tag": p.get("tag", "p")} for p in paragraphs]
+
+    # ... (Original loop for other engines)
+    
     # Header for streaming view
     if output_placeholder:
         output_placeholder.markdown("### 翻訳プレビュー (生成中...)")
@@ -240,6 +333,7 @@ def translate_paragraphs(paragraphs: List[dict], engine_name="Google", source_la
     streaming_text = ""
 
     for i, p in enumerate(paragraphs):
+        # ... (rest of the loop)
         text = p.get("text", "")
         tag = p.get("tag", "p")
         
