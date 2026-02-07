@@ -402,21 +402,26 @@ def main():
                         placeholder="xxxx-xxxx-xxxx-xxxx"
                     )
                     
-                    # 保存ボタン
-                    if st.button("APIキーを保存", key="save_deepl_key"):
-                        st.session_state["deepl_api_key"] = deepl_key_input
-                        
-                        # Save to cookie for 30 days
-                        expires = datetime.datetime.now() + datetime.timedelta(days=30)
-                        cookie_manager.set("deepl_api_key_cookie", deepl_key_input, expires_at=expires)
-                        
-                        # 保存時はキャッシュクリアして再取得させる
-                        if "deepl_usage_cache" in st.session_state:
-                            del st.session_state["deepl_usage_cache"]
-                        
-                        # Set flag to show success message after rerun
-                        st.session_state["deepl_key_saved_success"] = True
-                        st.rerun()
+                    # 保存ボタン (入力値が現在の保存値と異なる場合のみ表示)
+                    current_saved_key = st.session_state.get("deepl_api_key", "")
+                    if deepl_key_input != current_saved_key:
+                        if st.button("APIキーをブラウザに保存", key="save_deepl_key"):
+                            st.session_state["deepl_api_key"] = deepl_key_input
+                            
+                            # Save to cookie for 30 days
+                            expires = datetime.datetime.now() + datetime.timedelta(days=30)
+                            cookie_manager.set("deepl_api_key_cookie", deepl_key_input, expires_at=expires)
+                            
+                            # 保存時はキャッシュクリアして再取得させる
+                            if "deepl_usage_cache" in st.session_state:
+                                del st.session_state["deepl_usage_cache"]
+                            
+                            # Set flag to show success message after rerun
+                            st.session_state["deepl_key_saved_success"] = True
+                            st.rerun()
+                    else:
+                        # If key is saved and unchanged, show nothing or just text
+                        pass
                     
                     # Revert: Show status and usage INSIDE the expander as requested by user
                     # Use explicit placeholders to try to manage state better
@@ -427,15 +432,9 @@ def main():
                     if st.session_state.get("deepl_key_saved_success", False):
                         with message_placeholder.container():
                             if st.session_state.get("deepl_api_key"):
-                                st.success("✅ 保存しました")
+                                st.success("✅ 保存済み")
                             else:
                                 st.info("クリアしました")
-                        # Reset flag so message disappears on next interaction (optional, or keep it)
-                        # Let's keep it until next reload for visibility, or clear it? 
-                        # Usually better to clear it after showing once, but tricky in Streamlit.
-                        # Actually, just showing it is fine. It will disappear if they click something else.
-                        # To make it disappear on next run, we can delete it? No, that requires another run.
-                        # Let's just leave it for now.
                         del st.session_state["deepl_key_saved_success"]
 
                     # 2. 自動的に残量を確認・表示（キーがある場合）
