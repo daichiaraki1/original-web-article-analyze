@@ -386,7 +386,6 @@ def main():
                         )
                         
                         # 保存ボタン
-
                         auth_changed = False
                         if st.button("APIキーを保存", key="save_deepl_key"):
                             st.session_state["deepl_api_key"] = deepl_key_input
@@ -394,25 +393,23 @@ def main():
                             if "deepl_usage_cache" in st.session_state:
                                 del st.session_state["deepl_usage_cache"]
                             auth_changed = True
-                        
-                        # ボタン下の表示領域を一つの st.empty() で管理して描画崩れを防ぐ
-                        settings_status_area = st.empty()
-                        
-                        with settings_status_area.container():
-                            # 1. 保存/クリアのメッセージ表示
-                            if auth_changed:
-                                if deepl_key_input:
-                                    st.success("✅ 保存しました")
-                                else:
-                                    st.info("クリアしました")
+                
+                # Update: Move status area OUTSIDE the expander to prevent ghosting/zombie elements
+                # caused by nested complex containers (Col -> Expander -> Empty -> Container).
+                settings_status_area = st.empty()
+                
+                with settings_status_area.container():
+                    # 1. 保存/クリアのメッセージ表示
+                    if auth_changed:
+                        if deepl_key_input:
+                            st.success("✅ 保存しました")
+                        else:
+                            st.info("クリアしました")
 
-                            # 2. 自動的に残量を確認・表示（キーがある場合）
-                            saved_key = st.session_state.get("deepl_api_key")
-                            if saved_key:
-                                # render_deepl_usage_ui は内部で container を使うため、そのまま呼べる
-                                # ただし、ここでは settings_status_area.container() の中なので、
-                                # 直下の要素としてレンダリングされる。
-                                render_deepl_usage_ui(saved_key, None) # Placeholder なしで直書き（親がContainerなので）
+                    # 2. 自動的に残量を確認・表示（キーがある場合）
+                    saved_key = st.session_state.get("deepl_api_key")
+                    if saved_key:
+                        render_deepl_usage_ui(saved_key, None)
                 
                 if 'lang_choice_label' not in locals():
                     # Fallback or error handling

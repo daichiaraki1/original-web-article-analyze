@@ -286,13 +286,6 @@ def render_deepl_usage_ui(api_key: str, placeholder=None):
         current_count = st.session_state.render_count_debug
         
         st.markdown(f"**[DEBUG] Render Count: {current_count}**")
-        
-        # DEBUG: Traceback to find the ghost
-        import traceback
-        stack = traceback.format_stack()
-        # Clean stack to only show interesting lines (e.g. app.py)
-        filtered_stack = [s for s in stack if "app.py" in s or "translator.py" in s]
-        st.code("".join(filtered_stack[-3:])) # Show last 3 calls
     
         if not api_key:
             return
