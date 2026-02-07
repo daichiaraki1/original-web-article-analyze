@@ -311,6 +311,7 @@ def main():
                 lang_col1, lang_col2, lang_col3 = st.columns([1, 2, 1])
                 
                 # 自動判定: コンテンツから言語を推定してデフォルト設定
+                detected_code = "Not Run"
                 if "src_lang_select" not in st.session_state:
                     detected_code = detect_language(src_article.text[:2000] if src_article.text else "")
                     
@@ -328,6 +329,9 @@ def main():
                     elif "weixin.qq.com" in src_url:
                         # WeChatの場合は、英語以外（unknown, ja, mixed, ko等）はすべて中国語とみなす
                         st.session_state["src_lang_select"] = "中国語 (簡体字)"
+                
+                # Debug Info (Temporary)
+                st.info(f"Debug: Detected={detected_code}, URL_WeChat={'weixin.qq.com' in src_url}, Selected={st.session_state.get('src_lang_select', 'None')}")
                 
                 with lang_col2:
                     st.markdown("<div style='margin-bottom: 5px; font-weight: bold; color: #475569;'>元記事の言語</div>", unsafe_allow_html=True)
