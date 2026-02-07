@@ -4,6 +4,7 @@ import re
 import requests
 import time
 from deep_translator import GoogleTranslator, MyMemoryTranslator
+import google.generativeai as genai
 
 # Google翻訳の文字数制限（安全マージンを取って4500文字）
 CHAR_LIMIT = 4500
@@ -64,7 +65,7 @@ def split_text_by_sentences(text: str, max_chars: int = CHAR_LIMIT) -> List[str]
     return chunks if chunks else [text]
 
 
-def translate_single_text(text: str, engine_name: str, source_lang: str, deepl_api_key: str = None) -> tuple:
+def translate_single_text(text: str, engine_name: str, source_lang: str, deepl_api_key: str = None, gemini_api_key: str = None) -> tuple:
     """
     単一のテキストを翻訳する（文字数制限考慮）
     Returns: (translated_text, used_engine)
@@ -77,17 +78,17 @@ def translate_single_text(text: str, engine_name: str, source_lang: str, deepl_a
         final_engine = engine_name
         
         for chunk in chunks:
-            trans, eng = _translate_chunk(chunk, engine_name, source_lang, deepl_api_key)
+            trans, eng = _translate_chunk(chunk, engine_name, source_lang, deepl_api_key, gemini_api_key)
             translated_chunks.append(trans)
             if "Fallback" in eng or "Failed" in eng:
                 final_engine = eng
         
         return " ".join(translated_chunks), final_engine
     else:
-        return _translate_chunk(text, engine_name, source_lang, deepl_api_key)
+        return _translate_chunk(text, engine_name, source_lang, deepl_api_key, gemini_api_key)
 
 
-def _translate_chunk(text: str, engine_name: str, source_lang: str, deepl_api_key: str = None) -> tuple:
+def _translate_chunk(text: str, engine_name: str, source_lang: str, deepl_api_key: str = None, gemini_api_key: str = None) -> tuple:
     """
     実際の翻訳処理（内部関数）
     """
@@ -163,10 +164,54 @@ def _translate_chunk(text: str, engine_name: str, source_lang: str, deepl_api_ke
             except:
                 return text, "Failed"
     
+    elif engine_name == "Gemini":
+        if not gemini_api_key:
+            return text, "Failed (No API Key)"
+        
+        try:
+            genai.configure(api_key=gemini_api_key)
+            # Use the latest fast model per user request
+            model = genai.GenerativeModel('gemini-2.0-flash')
+            
+            # Safety settings to avoid blocking content
+            safety_settings = [
+                {
+                    "category": "HARM_CATEGORY_HARASSMENT",
+                    "threshold": "BLOCK_NONE"
+                },
+                {
+                    "category": "HARM_CATEGORY_HATE_SPEECH",
+                    "threshold": "BLOCK_NONE"
+                },
+                {
+                    "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                    "threshold": "BLOCK_NONE"
+                },
+                {
+                    "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                    "threshold": "BLOCK_NONE"
+                },
+            ]
+
+            prompt = f"Translate the following text into natural Japanese. Do not add any explanations or notes, just output the translation.\n\n{text}"
+            
+            response = model.generate_content(
+                prompt,
+                safety_settings=safety_settings
+            )
+            
+            if response.text:
+                return response.text.strip(), "Gemini"
+            else:
+                return text, "Gemini (Empty Response)"
+                
+        except Exception as e:
+            return text, f"Gemini (Error: {str(e)[:50]})"
+    
     return text, "None"
 
 
-def translate_paragraphs(paragraphs: List[dict], engine_name="Google", source_lang="auto", deepl_api_key: str = None):
+def translate_paragraphs(paragraphs: List[dict], engine_name="Google", source_lang="auto", deepl_api_key: str = None, gemini_api_key: str = None):
     """
     段落ごとに翻訳する（長い段落は自動分割）
     """
@@ -225,7 +270,7 @@ def translate_paragraphs(paragraphs: List[dict], engine_name="Google", source_la
         """, unsafe_allow_html=True)
         
         # 翻訳実行（長文は自動分割）
-        res_text, used_engine = translate_single_text(text, engine_name, source_lang, deepl_api_key)
+        res_text, used_engine = translate_single_text(text, engine_name, source_lang, deepl_api_key, gemini_api_key)
         
         translated_data.append({
             "text": str(res_text),
