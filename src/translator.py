@@ -105,51 +105,46 @@ def _translate_chunk(text: str, engine_name: str, source_lang: str, deepl_api_ke
         if not deepl_api_key:
             return text, "Failed (No API Key)"
         try:
-            # DeepL translation
-            deepl_source = None
+            # DeepL Direct API Implementation
+            # Determine endpoint and source mapping
+            # DeepL source for Chinese is 'ZH' per docs
+            # If auto, omit source_lang
+            
+            is_free = deepl_api_key.endswith(':fx')
+            base_url = "https://api-free.deepl.com/v2/translate" if is_free else "https://api.deepl.com/v2/translate"
+            
+            params = {
+                'auth_key': deepl_api_key,
+                'text': text,
+                'target_lang': 'JA'
+            }
+            
             if source_lang != 'auto':
                 s_upper = source_lang.upper()
-                if s_upper in ['ZH-CN', 'ZH-TW', 'ZH-HANS', 'ZH-HANT']:
-                    deepl_source = 'zh'
+                if s_upper in ['ZH-CN', 'ZH-TW', 'ZH-HANS', 'ZH-HANT', 'ZH']:
+                    params['source_lang'] = 'ZH'
+                elif s_upper == 'JA':
+                    return text, "DeepL (Skipped: Source=Target)"
                 else:
-                    deepl_source = s_upper
+                    params['source_lang'] = s_upper
             
-            # Check source != target (DeepL doesn't support JA -> JA)
-            if deepl_source == 'JA':
-                return text, "DeepL (Skipped: Source=Target)"
-            
-            # Construct init arguments
-            init_args = {
-                'api_key': deepl_api_key,
-                'target': 'JA',
-                'use_free_api': True
-            }
-            if deepl_source:
-                init_args['source'] = deepl_source
-            
-            print(f"DEBUG: DeepL Init Args: {init_args}, Text len: {len(text)}")
-            res = DeeplTranslator(**init_args).translate(text)
-            return (res if res else text), "DeepL"
-        except Exception as e:
-            # Try Pro API
             try:
-                # Re-construct args for PRO
-                init_args = {
-                    'api_key': deepl_api_key,
-                    'target': 'JA',
-                    'use_free_api': False
-                }
-                if deepl_source:
-                    init_args['source'] = deepl_source
+                # print(f"DEBUG: DeepL Direct Req: {base_url}, Params: {params.keys()}, Source: {params.get('source_lang')}")
+                resp = requests.post(base_url, data=params, timeout=10)
                 
-                res = DeeplTranslator(**init_args).translate(text)
-                return (res if res else text), "DeepL (Pro)"
+                if resp.status_code == 200:
+                    data = resp.json()
+                    # DeepL returns {'translations': [{'text': '...'}, ...]}
+                    translations = data.get('translations', [])
+                    if translations:
+                        return translations[0].get('text', text), "DeepL"
+                    else:
+                        return text, "DeepL (Empty Response)"
+                else:
+                    return text, f"DeepL (Error: {resp.status_code} - {resp.text[:50]})"
+                    
             except Exception as e:
-                # エラー（Googleへのフォールバックは行わない）
-                error_str = str(e)
-                if "No support for the provided language" in error_str and "JA" in error_str:
-                     return text, "DeepL (Skipped: Source=Target)"
-                return text, f"DeepL (Failed: {error_str[:50]})"
+                return text, f"DeepL (NetError: {str(e)[:50]})"
     
     elif engine_name == "MyMemory":
         try:
