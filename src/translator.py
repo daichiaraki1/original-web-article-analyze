@@ -291,46 +291,53 @@ def translate_batch_gemini(paragraphs: List[dict], source_lang: str, gemini_api_
                  wait_time_msg = f"約 {int(wait_seconds) + 1} 秒待機してから再試行してください。"
              
              # Sophisticated HTML Error Message
-             error_message = f"""
-             <div style="
-                background-color: #fff1f2; 
-                border: 1px solid #fda4af; 
-                border-radius: 8px; 
-                padding: 16px; 
-                color: #be123c; 
-                font-family: sans-serif;
-                margin-bottom: 10px;
-             ">
-                <div style="display: flex; align-items: start; gap: 10px;">
-                    <div style="font-size: 1.5em;">⚠️</div>
-                    <div>
-                        <div style="font-weight: bold; font-size: 1.1em; margin-bottom: 5px;">Gemini API 利用制限 (Quota Exceeded)</div>
-                        <div style="font-size: 0.9em; line-height: 1.6;">
-                            Google AI Studioの無料枠（1日あたりのリクエスト数など）を超過した可能性があります。
-                        </div>
-                        <div style="
-                            background-color: #ffffff;
-                            border: 1px solid #fecdd3;
-                            border-radius: 6px;
-                            padding: 10px;
-                            margin-top: 10px;
-                            font-size: 0.9em;
-                            color: #881337;
-                        ">
-                            <strong>【回避策】</strong>
-                            <ol style="margin: 5px 0 0 20px; padding: 0;">
-                                <li>{wait_time_msg}</li>
-                                <li>別のGoogleアカウントで新しいAPIキーを取得して設定し直してください。</li>
-                                <li>Google Cloudの課金設定（Pay-as-you-go）を有効にすると制限が緩和されます。</li>
-                            </ol>
-                        </div>
-                        <div style="margin-top: 10px; font-size: 0.8em; color: #9f1239; opacity: 0.8;">
-                            詳細エラー: {str(e)[:200]}...
+             # Check if this is just a Title (h1) or small single item
+             is_title = len(paragraphs) == 1 and paragraphs[0].get("tag") == "h1"
+             
+             if is_title:
+                 # Simplified error for title to avoid duplication with body error
+                 error_message = f"⚠️ Gemini Error: {str(e)[:50]}... (詳細エラーは本文参照)"
+             else:
+                 error_message = f"""
+                 <div style="
+                    background-color: #fff1f2; 
+                    border: 1px solid #fda4af; 
+                    border-radius: 8px; 
+                    padding: 16px; 
+                    color: #be123c; 
+                    font-family: sans-serif;
+                    margin-bottom: 10px;
+                 ">
+                    <div style="display: flex; align-items: start; gap: 10px;">
+                        <div style="font-size: 1.5em;">⚠️</div>
+                        <div>
+                            <div style="font-weight: bold; font-size: 1.1em; margin-bottom: 5px;">Gemini API 利用制限 (Quota Exceeded)</div>
+                            <div style="font-size: 0.9em; line-height: 1.6;">
+                                Google AI Studioの無料枠（1日あたりのリクエスト数など）を超過した可能性があります。
+                            </div>
+                            <div style="
+                                background-color: #ffffff;
+                                border: 1px solid #fecdd3;
+                                border-radius: 6px;
+                                padding: 10px;
+                                margin-top: 10px;
+                                font-size: 0.9em;
+                                color: #881337;
+                            ">
+                                <strong>【回避策】</strong>
+                                <ol style="margin: 5px 0 0 20px; padding: 0;">
+                                    <li>{wait_time_msg}</li>
+                                    <li>別のGoogleアカウントで新しいAPIキーを取得して設定し直してください。</li>
+                                    <li>Google Cloudの課金設定（Pay-as-you-go）を有効にすると制限が緩和されます。</li>
+                                </ol>
+                            </div>
+                            <div style="margin-top: 10px; font-size: 0.8em; color: #9f1239; opacity: 0.8;">
+                                詳細エラー: {str(e)[:200]}...
+                            </div>
                         </div>
                     </div>
-                </div>
-             </div>
-             """
+                 </div>
+                 """
         
         # Suppress duplicate status area error if we are returning it as text
         # status_area.warning(..., ) -> Removed
@@ -430,7 +437,7 @@ def translate_paragraphs(paragraphs: List[dict], engine_name="Google", source_la
     
     # Gemini Optimization: Batch Translation
     # If engine is Gemini, we use a single request (or few chunks) to avoid Rate Limits (15 RPM / 20 RPD)
-    if engine_name == "Gemini":
+    if "Gemini" in engine_name:
         # Exception handling is done inside translate_batch_gemini
         return translate_batch_gemini(paragraphs, source_lang, gemini_api_key, output_placeholder, status_area)
 

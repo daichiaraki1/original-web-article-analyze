@@ -42,7 +42,8 @@ def main():
     if cookie_gemini and not st.session_state.get("gemini_api_key"):
         st.session_state["gemini_api_key"] = cookie_gemini
     
-    # セッション状態の初期化 (最上部)
+    # Debug Cookies
+    # st.write(f"DEBUG COOKIES: {cookie_manager.get_all()}")
     if "sel_imgs" not in st.session_state:
         st.session_state.sel_imgs = set()
     if "s_url_v9" not in st.session_state:
@@ -510,7 +511,7 @@ def main():
                         
                         # Save to cookie for 30 days
                         expires = datetime.datetime.now() + datetime.timedelta(days=30)
-                        cookie_manager.set("gemini_api_key_cookie", gemini_key_input, expires_at=expires)
+                        cookie_manager.set("gemini_api_key_cookie", gemini_key_input, expires_at=expires, path="/")
                         
                         st.session_state["gemini_key_saved_success"] = True
                         st.rerun()
@@ -682,7 +683,7 @@ def main():
                     if st.session_state.get("deepl_api_key"):
                         engines.insert(2, "DeepL")
                     if st.session_state.get("gemini_api_key"):
-                        engines.insert(3 if "DeepL" in engines else 2, "Gemini")
+                        engines.insert(3 if "DeepL" in engines else 2, "Gemini (gemini-3-flash)")
                     selected_engine = st.selectbox(
                         "翻訳エンジン",
                         engines,
@@ -721,8 +722,7 @@ def main():
                                 gemini_api_key=st.session_state.get("gemini_api_key")
                             )[0]["text"]
                             
-                            # Gemini usage tracking (Increment count on success)
-                            if selected_engine == "Gemini":
+                            if "Gemini" in selected_engine:
                                 # Load current
                                 today_str = datetime.date.today().strftime("%Y-%m-%d")
                                 usage_cookie = cookie_manager.get("gemini_usage_cookie")
