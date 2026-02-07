@@ -1080,6 +1080,23 @@ def main():
                              new_label = f"Gemini ({fallback_target_model})"
                              st.session_state["gemini_label_current"] = new_label
                              st.session_state["engine_1_selected"] = new_label
+                             
+                             # Execute translation immediately
+                             with st.spinner(f"{new_label} で再試行中..."):
+                                 st.session_state[t_key] = translate_paragraphs(
+                                     src_article.structured_html_parts,
+                                     engine_name=f"Gemini:{fallback_target_model}",
+                                     source_lang=source_lang,
+                                     deepl_api_key=st.session_state.get("deepl_api_key"),
+                                     gemini_api_key=st.session_state.get("gemini_api_key")
+                                 )
+                                 st.session_state[f"t_ttl_v9_{src_url}"] = translate_paragraphs(
+                                     [{"tag": "h1", "text": src_article.title}],
+                                     engine_name=f"Gemini:{fallback_target_model}",
+                                     source_lang=source_lang,
+                                     deepl_api_key=st.session_state.get("deepl_api_key"),
+                                     gemini_api_key=st.session_state.get("gemini_api_key")
+                                 )[0]["text"]
                              st.rerun()
 
                 # Check Engine 2 for Errors (Compare Mode)
@@ -1091,6 +1108,24 @@ def main():
                              new_label = f"Gemini ({fallback_target_model})"
                              st.session_state["gemini_label_current"] = new_label
                              st.session_state["engine_2_selected"] = new_label
+                             
+                             # Execute translation immediately
+                             with st.spinner(f"{new_label} で再試行中..."):
+                                 t_key_2 = f"t_v9_{src_url}_compare"
+                                 st.session_state[t_key_2] = translate_paragraphs(
+                                     src_article.structured_html_parts,
+                                     engine_name=f"Gemini:{fallback_target_model}",
+                                     source_lang=source_lang,
+                                     deepl_api_key=st.session_state.get("deepl_api_key"),
+                                     gemini_api_key=st.session_state.get("gemini_api_key")
+                                 )
+                                 st.session_state[f"t_ttl_v9_{src_url}_compare"] = translate_paragraphs(
+                                     [{"tag": "h1", "text": src_article.title}],
+                                     engine_name=f"Gemini:{fallback_target_model}",
+                                     source_lang=source_lang,
+                                     deepl_api_key=st.session_state.get("deepl_api_key"),
+                                     gemini_api_key=st.session_state.get("gemini_api_key")
+                                 )[0]["text"]
                              st.rerun()
 
                 # --- Body Generation ---
