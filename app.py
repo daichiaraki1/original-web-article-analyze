@@ -311,40 +311,57 @@ def main():
                 lang_col1, lang_col2, lang_col3 = st.columns([1, 2, 1])
                 
                 # 自動判定: コンテンツから言語を推定してデフォルト設定
-                detected_code = "Not Run"
                 if "src_lang_select" not in st.session_state:
                     detected_code = detect_language(src_article.text[:2000] if src_article.text else "")
                     
                     # 判定ロジック
                     is_english = detected_code.lower().startswith("en")
                     is_chinese = detected_code.lower().startswith("zh") or detected_code == "mixed" # mixedも中国語扱い（または次でFallback）
-                    
-                    if is_chinese:
-                        if "tw" in detected_code.lower() or "hant" in detected_code.lower():
-                            st.session_state["src_lang_select"] = "中国語 (繁体字)"
-                        else:
-                            st.session_state["src_lang_select"] = "中国語 (簡体字)"
-                    elif is_english:
+
+                    if is_english:
                          st.session_state["src_lang_select"] = "英語"
                     elif "weixin.qq.com" in src_url:
                         # WeChatの場合は、英語以外（unknown, ja, mixed, ko等）はすべて中国語とみなす
                         st.session_state["src_lang_select"] = "中国語 (簡体字)"
+                    elif is_chinese:
+                        if "tw" in detected_code.lower() or "hant" in detected_code.lower():
+                            st.session_state["src_lang_select"] = "中国語 (繁体字)"
+                        else:
+                            st.session_state["src_lang_select"] = "中国語 (簡体字)"
+                    else:
+                        # その他の言語 (es, fr, ja等) -> 自動検出
+                        st.session_state["src_lang_select"] = "自動検出"
+
+                # 3. 言語選択UI (ラジオボタン)
+                # session_stateにあればそれをindexとして使う
+                lang_options = ["自動検出", "中国語 (簡体字)", "中国語 (繁体字)", "英語"]
+                current_selection = st.session_state.get("src_lang_select", "自動検出")
+                if current_selection not in lang_options:
+                    current_selection = "自動検出"
                 
-                # Debug Info (Temporary) - Removed
-                # st.info(f"Debug: Detected={detected_code}, URL_WeChat={'weixin.qq.com' in src_url}, Selected={st.session_state.get('src_lang_select', 'None')}")
-                
+                default_index = lang_options.index(current_selection)
+
+                # ここでキーを指定してsession_stateと連動させる
+                # on_changeは不要（keyがあるため自動更新されるが、値を強制するためにindexを使用）
                 with lang_col2:
                     st.markdown("<div style='margin-bottom: 5px; font-weight: bold; color: #475569;'>元記事の言語</div>", unsafe_allow_html=True)
-                    lang_choice_label = st.radio(
+                    selected_lang_label = st.radio(
                         "元記事の言語",
-                        list(lang_map.keys()),
-                        key="src_lang_select",
+                        options=lang_options,
+                        index=default_index,
                         horizontal=True,
+                        key="src_lang_radio",
                         label_visibility="collapsed"
                     )
+                
+                # ラジオボタンの変更をsession_stateに反映（key="src_lang_radio"があるのでst.session_state.src_lang_radioに入るが、
+                # 既存のロジックが src_lang_select を使っているため同期させる）
+                if st.session_state.src_lang_radio != st.session_state.get("src_lang_select"):
+                    st.session_state["src_lang_select"] = st.session_state.src_lang_radio
+                    st.rerun() # リロードして反映
                     
-                    # DeepL APIキー入力（折りたたみ形式）
-                    with st.expander("🔑 DeepL APIキー設定（任意）", expanded=False):
+                # DeepL APIキー入力（折りたたみ形式）
+                with lang_col2.expander("🔑 DeepL APIキー設定（任意）", expanded=False):
                         st.markdown("""
                             <div style="font-size: 0.85em; color: #64748b; margin-bottom: 10px;">
                                 DeepLのAPIキーをお持ちの場合、入力すると翻訳エンジンに「DeepL」が追加されます。
@@ -398,18 +415,32 @@ def main():
                                 # レイアウト調整: テキスト情報と更新ボタンを横並び
                                 u_col1, u_col2 = st.columns([4, 1])
                                 with u_col1:
-                                    st.markdown(f"**DeepL使用状況**: {count:,} / {limit:,} 文字 ({percent:.1f}%)")
+                                    st.markdown(f"**DeepL使用状況 (月次)**: {count:,} / {limit:,} 文字 ({percent:.1f}%)")
                                 with u_col2:
                                     if st.button("🔄 更新", key="refresh_deepl_usage"):
                                         if "deepl_usage_cache" in st.session_state:
                                             del st.session_state["deepl_usage_cache"]
                                         st.rerun()
                                 
-                                # プログレスバー（0%でも少し見えるように最小値を設定するか、ラベルを付与）
-                                # Streamlitのprogress barはラベル引数が非推奨になったり復活したり不安定なため、上部にテキスト、下部にバーを配置
-                                st.progress(min(percent / 100, 1.0))
-                                if percent < 2.0:
-                                    st.caption("※ 使用量が少ないため、バーが短く表示されています")
+                                # カスタムプログレスバー (背景グレー、使用率ブルー)
+                                bar_html = f"""
+                                <div style="
+                                    background-color: #f1f5f9;
+                                    width: 100%;
+                                    height: 8px;
+                                    border-radius: 4px;
+                                    margin-top: 5px;
+                                    overflow: hidden;
+                                ">
+                                    <div style="
+                                        background-color: #3b82f6;
+                                        width: {min(percent, 100)}%;
+                                        height: 100%;
+                                        border-radius: 4px;
+                                    "></div>
+                                </div>
+                                """
+                                st.markdown(bar_html, unsafe_allow_html=True)
                         
                         # 保存済みキーがあれば表示
                         if st.session_state.get("deepl_api_key"):
