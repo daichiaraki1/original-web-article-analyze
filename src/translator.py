@@ -216,81 +216,127 @@ def _translate_chunk(text: str, engine_name: str, source_lang: str, deepl_api_ke
 
 def translate_batch_gemini(paragraphs: List[dict], source_lang: str, gemini_api_key: str, output_placeholder, status_area):
     """
-    Translate all paragraphs in a single batch request to avoid quota limits.
+    Translate all paragraphs in a single batch request using line-based format for robustness.
     """
     if not paragraphs:
         return []
 
-    # Prepare batch input
+    # Prepare batch input with clear separators
+    # JSON is fragile. We use a custom separator that is unlikely to appear in text.
+    # But simple newline might be safest if we instruct properly.
+    # Let's use "|||" as separator for input and output to be safe against newlines in text.
+    
     texts = [p.get("text", "") for p in paragraphs]
+    combined_text = "\n|||\n".join(texts)
     
     # Configure Gemini
     genai.configure(api_key=gemini_api_key)
-    model = genai.GenerativeModel(
-        'gemini-3-flash-preview',
-        generation_config={"response_mime_type": "application/json"}
-    )
+    model = genai.GenerativeModel('gemini-3-flash-preview')
     
-    # Prompt for JSON array
+    # Safety settings to avoid blocking content (Apply here too!)
+    safety_settings = [
+        {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+        {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+        {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+        {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
+    ]
+    
+    # Prompt
     prompt = f"""
     You are a professional translator. 
-    Translate the following list of texts into natural Japanese.
-    Keep the formatting and tone suitable for news articles.
+    Translate the following text blocks into natural Japanese.
+    The input blocks are separated by "|||".
     
-    Input Texts:
-    {json.dumps(texts, ensure_ascii=False)}
+    IMPORTANT: 
+    1. Output MUST be separated by "|||" exactly matching the input structure.
+    2. Do NOT output JSON. Just the translated text blocks.
+    3. Maintain the order.
+    4. If a block is empty or just whitespace, keep it empty in output.
     
-    IMPORTANT: Return ONLY a raw JSON array of strings. 
-    The array length MUST match the input array length exactly (1-to-1 mapping).
+    Input:
+    {combined_text}
     """
 
     status_area.info(f"Gemini (Batch Mode) で一括翻訳中... ({len(texts)} 段落)")
     if output_placeholder:
         output_placeholder.markdown("### ⏳ Geminiで一括翻訳中... (しばらくお待ちください)")
 
+    full_response_text = ""
+    streaming_text = ""
+    error_message = None
+
     try:
-        response = model.generate_content(prompt)
-        translated_texts = json.loads(response.text)
+        response = model.generate_content(
+            prompt,
+            safety_settings=safety_settings,
+            stream=True
+        )
         
-        # Verify length
-        if len(translated_texts) != len(texts):
-            # Fallback: simple split or just error
-            # If mismatch, we can't map reliably. 
-            # Try to return what we have or pad
-            status_area.warning("Gemini: 翻訳結果の数が一致しませんでした。一部整合性が取れない可能性があります。")
-        
-        results = []
-        streaming_text = ""
-        
-        for i, p in enumerate(paragraphs):
-            t_text = translated_texts[i] if i < len(translated_texts) else p.get("text", "")
-            
-            item = {
-                "text": t_text,
-                "engine": "Gemini (Batch)",
-                "tag": p.get("tag", "p")
-            }
-            results.append(item)
-            
-            # Simulate streaming update for UX (optional, but good for confirmation)
-            tag = p.get("tag", "p")
-            if tag == 'h2':
-                streaming_text += f"\n\n## {t_text}\n\n"
-            elif tag == 'h3':
-                streaming_text += f"\n\n### {t_text}\n\n"
-            else:
-                streaming_text += f"\n\n{t_text}\n\n"
-
-        if output_placeholder:
-             output_placeholder.markdown(streaming_text)
-
-        status_area.success(f"Gemini (Batch) 翻訳完了！")
-        return results
-
+        # Stream response
+        for chunk in response:
+            if chunk.text:
+                full_response_text += chunk.text
+                # Optional: Update placeholder incrementally here if needed
+                
     except Exception as e:
-        status_area.error(f"Gemini Batch Error: {str(e)}")
-        # Raise to let the caller handle fallout
-        raise e
+        error_message = str(e)
+        status_area.warning(f"Gemini: 翻訳中にエラーが発生しました。取得できた部分まで表示します。 ({str(e)[:100]}...)")
+
+    # Process whatever text we got (even if empty or partial)
+    if not full_response_text and error_message:
+         # If completely failed at start, re-raise to let caller handle standard error
+         raise Exception(error_message)
+
+    # Split by separator
+    translated_texts = full_response_text.split("|||")
+    
+    # Clean up
+    translated_texts = [t.strip() for t in translated_texts if t.strip()] 
+    # Note: splitting might create empty strings if separators are adjacent or at ends. 
+    # But we asked to maintain structure. 
+    # Actually, simplistic split might be off if Gemini adds extra newlines. 
+    # Let's trust split("|||") but be careful with empty strings if they are valid translations?
+    # Re-reading prompt: "If a block is empty... keep it empty". 
+    # So we should strictly split by "|||".
+    translated_texts = full_response_text.split("|||")
+    translated_texts = [t.strip() for t in translated_texts] 
+    
+    # Handle length mismatch
+    if len(translated_texts) < len(texts):
+        shortage = len(texts) - len(translated_texts)
+        # If we had an error, the last chunk might be cut off.
+        # But we append error to the *next* slots.
+        suffix = f" (中断: {error_message})" if error_message else " (中断)"
+        translated_texts.extend([f"⚠️ 翻訳停止{suffix}"] * shortage)
+    elif len(translated_texts) > len(texts):
+         translated_texts = translated_texts[:len(texts)]
+    
+    results = []
+    ui_accumulated_text = ""
+    
+    for i, p in enumerate(paragraphs):
+        t_text = translated_texts[i]
+        
+        item = {
+            "text": t_text,
+            "engine": "Gemini (Batch)",
+            "tag": p.get("tag", "p")
+        }
+        results.append(item)
+        
+        tag = p.get("tag", "p")
+        header_prefix = "## " if tag == 'h2' else "### " if tag == 'h3' else ""
+        ui_accumulated_text += f"\n\n{header_prefix}{t_text}\n\n"
+
+    if output_placeholder:
+         output_placeholder.markdown(ui_accumulated_text)
+
+    if error_message:
+        status_area.error(f"Gemini: エラーにより中断されましたが、取得できた結果を表示します。")
+    else:
+        status_area.success(f"Gemini (Batch) 翻訳完了！")
+        
+    return results
 
 
 def translate_paragraphs(paragraphs: List[dict], engine_name="Google", source_lang="auto", deepl_api_key: str = None, gemini_api_key: str = None, output_placeholder=None):
