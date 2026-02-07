@@ -686,7 +686,8 @@ def main():
                     if st.session_state.get("deepl_api_key"):
                         engines.insert(2, "DeepL")
                     if st.session_state.get("gemini_api_key"):
-                        engines.insert(3 if "DeepL" in engines else 2, "Gemini (gemini-3-flash)")
+                        gemini_label = st.session_state.get("gemini_label_current", "Gemini (gemini-3-flash)")
+                        engines.insert(3 if "DeepL" in engines else 2, gemini_label)
                     selected_engine = st.selectbox(
                         "翻訳エンジン",
                         engines,
@@ -888,6 +889,9 @@ def main():
                 with hdr_col2:
                     # Engine 1 Selector
                     engines = ["Google", "DeepL", "MyMemory"] if st.session_state.get("deepl_api_key") else ["Google", "MyMemory"]
+                    if st.session_state.get("gemini_api_key"):
+                        gemini_label = st.session_state.get("gemini_label_current", "Gemini (gemini-3-flash)")
+                        engines.insert(3 if "DeepL" in engines else 2, gemini_label)
                     
                     # Fallback detection
                     is_fallback_1 = "Fallback" in engine_1 or "Failed" in engine_1
@@ -1026,6 +1030,9 @@ def main():
                         
                         # 既に翻訳1で使っているエンジンとは別のデフォルトを推奨
                         compare_engines = ["-- 選択してください --", "Google", "DeepL", "MyMemory"] if st.session_state.get("deepl_api_key") else ["-- 選択してください --", "Google", "MyMemory"]
+                        if st.session_state.get("gemini_api_key"):
+                            gemini_label = st.session_state.get("gemini_label_current", "Gemini (gemini-3-flash)")
+                            compare_engines.insert(3 if "DeepL" in compare_engines else 2, gemini_label)
                         selected_compare_engine = st.selectbox(
                             "比較エンジン",
                             compare_engines,
@@ -1056,6 +1063,31 @@ def main():
                 # Empty header_html since we're using Streamlit components above
                 header_html = ""
 
+                # --- Gemini Fallback Logic ---
+                fallback_target_model = "gemini-1.5-flash"
+                
+                # Check Engine 1 for Errors
+                if trans_data and any("Gemini (Error)" in str(item.get("engine", "")) for item in trans_data):
+                     current_e1 = st.session_state.get("engine_1_selected", "")
+                     # Only show if we are actually using Gemini (to avoid confusion)
+                     if "Gemini" in current_e1:
+                         st.warning(f"⚠️ Geminiでの翻訳に失敗しました。")
+                         if st.button(f"モデルを変更して再試行 ({fallback_target_model})", key="fallback_btn_1", help="より安定したモデルで再試行します"):
+                             new_label = f"Gemini ({fallback_target_model})"
+                             st.session_state["gemini_label_current"] = new_label
+                             st.session_state["engine_1_selected"] = new_label
+                             st.rerun()
+
+                # Check Engine 2 for Errors (Compare Mode)
+                if is_compare_mode and trans_data_2 and any("Gemini (Error)" in str(item.get("engine", "")) for item in trans_data_2):
+                     current_e2 = st.session_state.get("engine_2_selected", "")
+                     if "Gemini" in current_e2:
+                         st.warning(f"⚠️ Geminiでの翻訳に失敗しました (比較)。")
+                         if st.button(f"モデルを変更して再試行 ({fallback_target_model})", key="fallback_btn_2", help="より安定したモデルで再試行します"):
+                             new_label = f"Gemini ({fallback_target_model})"
+                             st.session_state["gemini_label_current"] = new_label
+                             st.session_state["engine_2_selected"] = new_label
+                             st.rerun()
 
                 # --- Body Generation ---
                 # Normalize length

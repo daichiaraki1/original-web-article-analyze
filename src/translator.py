@@ -214,7 +214,7 @@ def _translate_chunk(text: str, engine_name: str, source_lang: str, deepl_api_ke
     return text, "None"
 
 
-def translate_batch_gemini(paragraphs: List[dict], source_lang: str, gemini_api_key: str, output_placeholder, status_area):
+def translate_batch_gemini(paragraphs: List[dict], source_lang: str, gemini_api_key: str, output_placeholder, status_area, model_name: str = "gemini-3-flash-preview"):
     """
     Translate all paragraphs in a single batch request using line-based format for robustness.
     """
@@ -231,7 +231,7 @@ def translate_batch_gemini(paragraphs: List[dict], source_lang: str, gemini_api_
     
     # Configure Gemini
     genai.configure(api_key=gemini_api_key)
-    model = genai.GenerativeModel('gemini-3-flash-preview')
+    model = genai.GenerativeModel(model_name)
     
     # Safety settings to avoid blocking content (Apply here too!)
     safety_settings = [
@@ -390,9 +390,14 @@ def translate_batch_gemini(paragraphs: List[dict], source_lang: str, gemini_api_
     for i, p in enumerate(paragraphs):
         t_text = translated_texts[i]
         
+        # Detect if this specific item is the error message (for partial failure)
+        current_engine = "Gemini (Batch)"
+        if error_message and t_text == error_message:
+            current_engine = "Gemini (Error)"
+        
         item = {
             "text": t_text,
-            "engine": "Gemini (Batch)",
+            "engine": current_engine,
             "tag": p.get("tag", "p")
         }
         results.append(item)
@@ -438,8 +443,25 @@ def translate_paragraphs(paragraphs: List[dict], engine_name="Google", source_la
     # Gemini Optimization: Batch Translation
     # If engine is Gemini, we use a single request (or few chunks) to avoid Rate Limits (15 RPM / 20 RPD)
     if "Gemini" in engine_name:
+        # Extract model name
+        model_name = "gemini-3-flash-preview" # Default
+        
+        # 1. Parse "Gemini:model" format
+        if ":" in engine_name:
+            model_name = engine_name.split(":", 1)[1]
+        
+        # 2. Parse "Gemini (model)" format
+        match = re.search(r"Gemini \((.*?)\)", engine_name)
+        if match:
+            captured = match.group(1)
+            # Map aliases
+            if captured == "gemini-3-flash":
+                model_name = "gemini-3-flash-preview"
+            else:
+                model_name = captured
+
         # Exception handling is done inside translate_batch_gemini
-        return translate_batch_gemini(paragraphs, source_lang, gemini_api_key, output_placeholder, status_area)
+        return translate_batch_gemini(paragraphs, source_lang, gemini_api_key, output_placeholder, status_area, model_name=model_name)
 
     # ... (Original loop for other engines)
     
