@@ -1,4 +1,5 @@
 import textwrap
+import datetime
 import streamlit as st
 import streamlit.components.v1 as components
 from src.scraper import load_article_v9
@@ -375,9 +376,8 @@ def main():
                      # 維持すると再翻訳ボタンが必要。
                      st.rerun()
                 
-import datetime
             # Check for cookie-stored API key on load
-            # Note: initialization must be at top level, which we'll handle in next chunk
+            # Note: initialization must be at top level
             cookie_key = cookie_manager.get("deepl_api_key_cookie")
             if cookie_key and not st.session_state.get("deepl_api_key"):
                 st.session_state["deepl_api_key"] = cookie_key
