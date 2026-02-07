@@ -215,3 +215,34 @@ def translate_paragraphs(paragraphs: List[dict], engine_name="Google", source_la
     progress_bar.empty()
     status_area.empty()
     return translated_data
+
+
+def get_deepl_usage(deepl_api_key: str) -> dict:
+    """
+    DeepL APIの使用状況を取得する
+    Returns: {'character_count': int, 'character_limit': int} or {'error': str}
+    """
+    if not deepl_api_key:
+        return {'error': 'API Key is empty'}
+    
+    is_free = deepl_api_key.endswith(':fx')
+    base_url = "https://api-free.deepl.com/v2/usage" if is_free else "https://api.deepl.com/v2/usage"
+    
+    headers = {
+        'Authorization': f'DeepL-Auth-Key {deepl_api_key}'
+    }
+    
+    try:
+        resp = requests.get(base_url, headers=headers, timeout=10)
+        
+        if resp.status_code == 200:
+            data = resp.json()
+            # character_count and character_limit are standard fields
+            return {
+                'character_count': data.get('character_count', 0),
+                'character_limit': data.get('character_limit', 0)
+            }
+        else:
+            return {'error': f"Error {resp.status_code}: {resp.text}"}
+    except Exception as e:
+        return {'error': f"NetError: {str(e)}"}

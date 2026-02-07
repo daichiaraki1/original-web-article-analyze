@@ -2,7 +2,7 @@ import textwrap
 import streamlit as st
 import streamlit.components.v1 as components
 from src.scraper import load_article_v9
-from src.translator import translate_paragraphs
+from src.translator import translate_paragraphs, get_deepl_usage
 from src.utils import create_images_zip, fetch_image_data_v10, make_diff_html, detect_language
 
 # --- メイン UI ---
@@ -360,13 +360,30 @@ def main():
                             placeholder="xxxx-xxxx-xxxx-xxxx"
                         )
                         
-                        # 保存ボタン
-                        if st.button("APIキーを保存", key="save_deepl_key"):
-                            st.session_state["deepl_api_key"] = deepl_key_input
-                            if deepl_key_input:
-                                st.success("✅ DeepL APIキーを保存しました")
-                            else:
-                                st.info("APIキーがクリアされました")
+                        # 保存ボタンと使用量確認
+                        col_save, col_check = st.columns([1, 1])
+                        with col_save:
+                            if st.button("APIキーを保存", key="save_deepl_key"):
+                                st.session_state["deepl_api_key"] = deepl_key_input
+                                if deepl_key_input:
+                                    st.success("✅ 保存しました")
+                                else:
+                                    st.info("クリアしました")
+                        
+                        with col_check:
+                            if st.button("残量を確認", key="check_deepl_usage"):
+                                if not st.session_state.get("deepl_api_key"):
+                                    st.error("APIキーが保存されていません")
+                                else:
+                                    usage = get_deepl_usage(st.session_state["deepl_api_key"])
+                                    if "error" in usage:
+                                        st.error(f"取得失敗: {usage['error']}")
+                                    else:
+                                        count = usage['character_count']
+                                        limit = usage['character_limit']
+                                        percent = (count / limit * 100) if limit > 0 else 0
+                                        st.info(f"使用済み: {count:,} / 上限: {limit:,} 文字 ({percent:.1f}%)")
+                                        st.progress(min(percent / 100, 1.0))
                         
                         # 保存済みキーがあれば表示
                         if st.session_state.get("deepl_api_key"):
