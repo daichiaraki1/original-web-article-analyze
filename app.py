@@ -900,6 +900,8 @@ def main():
                         display_engine_1 = "DeepL"
                     elif "MyMemory" in engine_1 and "Fallback" not in engine_1:
                         display_engine_1 = "MyMemory"
+                    elif "Gemini" in engine_1:
+                         display_engine_1 = st.session_state.get("gemini_label_current", "Gemini (gemini-3-flash)")
                     
                     current_engine_1_idx = engines.index(display_engine_1) if display_engine_1 in engines else 0
                     
@@ -963,6 +965,8 @@ def main():
                             display_engine_2 = "DeepL"
                         elif "MyMemory" in engine_2 and "Fallback" not in engine_2:
                             display_engine_2 = "MyMemory"
+                        elif "Gemini" in engine_2:
+                            display_engine_2 = st.session_state.get("gemini_label_current", "Gemini (gemini-3-flash)")
                             
                         current_engine_2_idx = engines.index(display_engine_2) if display_engine_2 in engines else 1
                         
