@@ -290,18 +290,50 @@ def translate_batch_gemini(paragraphs: List[dict], source_lang: str, gemini_api_
                  wait_seconds = float(retry_match.group(1))
                  wait_time_msg = f"約 {int(wait_seconds) + 1} 秒待機してから再試行してください。"
              
-             error_message = (
-                 "⚠️ Gemini APIの利用制限（Quota Exceeded）に達しました。\n"
-                 "Google AI Studioの無料枠（1日あたりのリクエスト数など）を超過した可能性があります。\n"
-                 "\n"
-                 "【回避策】\n"
-                 f"1. {wait_time_msg}\n"
-                 "2. 別のGoogleアカウントで新しいAPIキーを取得して設定し直してください。\n"
-                 "3. Google Cloudの課金設定（Pay-as-you-go）を有効にすると制限が緩和されます。\n"
-                 f"\n(詳細エラー: {str(e)[:200]}...)"
-             )
+             # Sophisticated HTML Error Message
+             error_message = f"""
+             <div style="
+                background-color: #fff1f2; 
+                border: 1px solid #fda4af; 
+                border-radius: 8px; 
+                padding: 16px; 
+                color: #be123c; 
+                font-family: sans-serif;
+                margin-bottom: 10px;
+             ">
+                <div style="display: flex; align-items: start; gap: 10px;">
+                    <div style="font-size: 1.5em;">⚠️</div>
+                    <div>
+                        <div style="font-weight: bold; font-size: 1.1em; margin-bottom: 5px;">Gemini API 利用制限 (Quota Exceeded)</div>
+                        <div style="font-size: 0.9em; line-height: 1.6;">
+                            Google AI Studioの無料枠（1日あたりのリクエスト数など）を超過した可能性があります。
+                        </div>
+                        <div style="
+                            background-color: #ffffff;
+                            border: 1px solid #fecdd3;
+                            border-radius: 6px;
+                            padding: 10px;
+                            margin-top: 10px;
+                            font-size: 0.9em;
+                            color: #881337;
+                        ">
+                            <strong>【回避策】</strong>
+                            <ol style="margin: 5px 0 0 20px; padding: 0;">
+                                <li>{wait_time_msg}</li>
+                                <li>別のGoogleアカウントで新しいAPIキーを取得して設定し直してください。</li>
+                                <li>Google Cloudの課金設定（Pay-as-you-go）を有効にすると制限が緩和されます。</li>
+                            </ol>
+                        </div>
+                        <div style="margin-top: 10px; font-size: 0.8em; color: #9f1239; opacity: 0.8;">
+                            詳細エラー: {str(e)[:200]}...
+                        </div>
+                    </div>
+                </div>
+             </div>
+             """
         
-        status_area.warning(f"Gemini: 翻訳中にエラーが発生しました。取得できた部分まで表示します。")
+        # Suppress duplicate status area error if we are returning it as text
+        # status_area.warning(..., ) -> Removed
 
     # Process whatever text we got (even if empty or partial)
     if not full_response_text and error_message:
@@ -312,13 +344,13 @@ def translate_batch_gemini(paragraphs: List[dict], source_lang: str, gemini_api_
                  results.append({
                      "text": error_message, 
                      "engine": "Gemini (Error)",
-                     "tag": p.get("tag", "p")
+                     "tag": "div" # Changed tag to div to allow HTML rendering without p wrap issues if any
                  })
              else:
                  results.append({
                      "text": "...", 
                      "engine": "Gemini (Error)",
-                     "tag": p.get("tag", "p")
+                     "tag": "p"
                  })
          return results
 
@@ -331,11 +363,17 @@ def translate_batch_gemini(paragraphs: List[dict], source_lang: str, gemini_api_
     # Handle length mismatch
     if len(translated_texts) < len(texts):
         shortage = len(texts) - len(translated_texts)
-        # If we had an error, the last chunk might be cut off.
-        # But we append error to the *next* slots.
-        # Use simple error message for missing parts
-        suffix = f" (中断: {error_message})" if error_message else " (中断)"
-        translated_texts.extend([f"⚠️ 翻訳停止{suffix}"] * shortage)
+        suffix = f"<br><span style='color:red; font-size:0.8em;'>⚠️ 翻訳停止 (詳細エラーは上部に表示)</span>" if error_message else " (中断)"
+        if error_message:
+             # If we have partial results but also an error, we should inject the error message somewhere visible.
+             # Maybe append it to the last valid text or the first text?
+             # For now, if we have partials, status_area IS useful.
+             # But user wants single area.
+             # Let's append the HTML error to the *next* block (the first failed one) to show where it stopped.
+             translated_texts.append(error_message) # This becomes the first "missing" block
+             shortage -= 1 # We filled one
+             
+        translated_texts.extend([f"..."] * shortage)
     elif len(translated_texts) > len(texts):
          translated_texts = translated_texts[:len(texts)]
     
