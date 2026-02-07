@@ -388,6 +388,8 @@ def main():
                         # 保存ボタン
                         auth_changed = False
                         if st.button("APIキーを保存", key="save_deepl_key"):
+                            st.session_state["deepl_api_key"] = deepl_key_input
+                            # 保存時はキャッシュクリアして再取得させる
                             if "deepl_usage_cache" in st.session_state:
                                 del st.session_state["deepl_usage_cache"]
                             auth_changed = True
