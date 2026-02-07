@@ -345,7 +345,7 @@ def main():
                 # on_changeは不要（keyがあるため自動更新されるが、値を強制するためにindexを使用）
                 with lang_col2:
                     st.markdown("<div style='margin-bottom: 5px; font-weight: bold; color: #475569;'>元記事の言語</div>", unsafe_allow_html=True)
-                    selected_lang_label = st.radio(
+                    lang_choice_label = st.radio(
                         "元記事の言語",
                         options=lang_options,
                         index=default_index,
