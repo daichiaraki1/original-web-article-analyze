@@ -115,9 +115,12 @@ def _translate_chunk(text: str, engine_name: str, source_lang: str, deepl_api_ke
             base_url = "https://api-free.deepl.com/v2/translate" if is_free else "https://api.deepl.com/v2/translate"
             
             params = {
-                'auth_key': deepl_api_key,
                 'text': text,
                 'target_lang': 'JA'
+            }
+            
+            headers = {
+                'Authorization': f'DeepL-Auth-Key {deepl_api_key}'
             }
             
             if source_lang != 'auto':
@@ -130,12 +133,19 @@ def _translate_chunk(text: str, engine_name: str, source_lang: str, deepl_api_ke
                     params['source_lang'] = s_upper
             
             try:
-                # print(f"DEBUG: DeepL Direct Req: {base_url}, Params: {params.keys()}, Source: {params.get('source_lang')}")
-                resp = requests.post(base_url, data=params, timeout=10)
+                resp = requests.post(base_url, data=params, headers=headers, timeout=10)
+                
+                if "deepl_debug_shown" not in st.session_state:
+                    st.session_state["deepl_debug_shown"] = True
+                    if resp.status_code != 200:
+                         st.error(f"DeepL Error Debug: {resp.text}")
+                    else:
+                         # Success debug: show what we got
+                         st.toast("DeepL API Success (First Chunk)")
+                         st.code(str(resp.json())[:500], language='json')
                 
                 if resp.status_code == 200:
                     data = resp.json()
-                    # DeepL returns {'translations': [{'text': '...'}, ...]}
                     translations = data.get('translations', [])
                     if translations:
                         return translations[0].get('text', text), "DeepL"
