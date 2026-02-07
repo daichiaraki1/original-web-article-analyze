@@ -274,25 +274,20 @@ def render_deepl_usage_ui(api_key: str):
     """
     DeepL使用状況を表示するUIコンポーネント
     """
-    if "debug_usage_rendered" not in st.session_state:
-        st.session_state.debug_usage_rendered = 0
+    # Debug: Explicit Counter
+    if "render_count_debug" not in st.session_state:
+        st.session_state.render_count_debug = 0
+    st.session_state.render_count_debug += 1
+    current_count = st.session_state.render_count_debug
     
-    # Double Render Detection
-    now = time.time()
-    last = st.session_state.get("last_usage_render", 0)
-    if now - last < 1.0:
-        st.toast(f"⚠️ DOUBLE RENDER DETECTED! (Diff: {now - last:.3f}s)")
-        # Optionally show an error on screen
-        st.error(f"Double Render at {now}")
-    
-    st.session_state["last_usage_render"] = now
+    st.markdown(f"**[DEBUG] Render Count: {current_count}**")
 
     if not api_key:
         return
 
     st.markdown("---")
     
-    # キャッシュがない、または更新ボタンが押された場合に取得
+    # ... (cache logic) ...
     if "deepl_usage_cache" not in st.session_state:
         with st.spinner("使用状況を取得中..."):
             st.session_state["deepl_usage_cache"] = get_deepl_usage(api_key)
@@ -300,6 +295,7 @@ def render_deepl_usage_ui(api_key: str):
     usage = st.session_state["deepl_usage_cache"]
     
     if "error" in usage:
+        # ... error handling ...
         st.error(f"取得失敗: {usage['error']}")
         if st.button("再試行", key="retry_deepl_usage"):
              if "deepl_usage_cache" in st.session_state:
@@ -310,15 +306,15 @@ def render_deepl_usage_ui(api_key: str):
         limit = usage['character_limit']
         percent = (count / limit * 100) if limit > 0 else 0
         
-        # レイアウト調整: テキスト情報と更新ボタンを横並び
-        u_col1, u_col2 = st.columns([4, 1])
-        with u_col1:
-            st.markdown(f"**DeepL使用状況 (月次)**: {count:,} / {limit:,} 文字 ({percent:.1f}%)")
-        with u_col2:
-            if st.button("🔄 更新", key="refresh_deepl_usage"):
-                if "deepl_usage_cache" in st.session_state:
-                    del st.session_state["deepl_usage_cache"]
-                st.rerun()
+        # Simplified Layout (No nested columns to avoid issues)
+        st.markdown(f"**DeepL使用状況 (月次)**: {count:,} / {limit:,} 文字 ({percent:.1f}%)")
+        
+        # Refresh button (inline-ish or below)
+        if st.button("🔄 更新", key="refresh_deepl_usage"):
+            if "deepl_usage_cache" in st.session_state:
+                del st.session_state["deepl_usage_cache"]
+            st.rerun()
+
         
         # カスタムプログレスバー (背景グレー、使用率ブルー)
         bar_html = f"""
