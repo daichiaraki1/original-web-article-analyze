@@ -391,6 +391,11 @@ def main():
                         
                         # 自動的に残量を確認・表示（キーがある場合）
                         usage_ui_placeholder = st.empty()
+                        
+                        # TRACE LOG
+                        import time
+                        st.write(f"DEBUG_TRACE: Call Site Hit at {time.time()}. PH_ID: {id(usage_ui_placeholder)}")
+                        
                         saved_key = st.session_state.get("deepl_api_key")
                         if saved_key:
                             render_deepl_usage_ui(saved_key, usage_ui_placeholder)
