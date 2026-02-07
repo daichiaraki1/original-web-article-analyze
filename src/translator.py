@@ -278,8 +278,11 @@ def render_deepl_usage_ui(api_key: str, placeholder=None):
     if placeholder is None:
         placeholder = st.container()
 
+    # FORCE CLEAR: Verify unique rendering
+    placeholder.empty()
+
     with placeholder.container():
-    
+        
         if not api_key:
             return
 
@@ -335,10 +338,8 @@ def render_deepl_usage_ui(api_key: str, placeholder=None):
             st.markdown(bar_html, unsafe_allow_html=True)
 
         # APIキー設定済み表示
-        # APIキー設定済み表示 (Old Markdown commented out to debug duplication)
-        # st.markdown(f"""
-        #     <div style="font-size: 0.8em; color: #22c55e; margin-top: 5px;">
-        #         ✓ APIキー設定済み（{api_key[:8]}...）
-        #     </div>
-        # """, unsafe_allow_html=True)
-        st.caption(f"✓ APIキー有効 ({api_key[:4]}...)")
+        st.markdown(f"""
+            <div style="font-size: 0.8em; color: #22c55e; margin-top: 5px;">
+                ✓ APIキー設定済み（{api_key[:8]}...）
+            </div>
+        """, unsafe_allow_html=True)
