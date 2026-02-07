@@ -18,22 +18,25 @@ import extra_streamlit_components as stx
 def get_manager():
     return stx.CookieManager()
 
-cookie_manager = get_manager()
 
-# Check for cookie-stored API keys on load
-# DeepL
-cookie_key = cookie_manager.get("deepl_api_key_cookie")
-if cookie_key and not st.session_state.get("deepl_api_key"):
-    st.session_state["deepl_api_key"] = cookie_key
-
-# Gemini
-cookie_gemini = cookie_manager.get("gemini_api_key_cookie")
-if cookie_gemini and not st.session_state.get("gemini_api_key"):
-    st.session_state["gemini_api_key"] = cookie_gemini
 
 # --- メイン UI ---
 def main():
     st.set_page_config(layout="wide", page_title="中国メディア解析ツール")
+
+    # Initialize Cookie Manager AFTER page config
+    cookie_manager = get_manager()
+    
+    # Check for cookie-stored API keys on load
+    # DeepL
+    cookie_key = cookie_manager.get("deepl_api_key_cookie")
+    if cookie_key and not st.session_state.get("deepl_api_key"):
+        st.session_state["deepl_api_key"] = cookie_key
+
+    # Gemini
+    cookie_gemini = cookie_manager.get("gemini_api_key_cookie")
+    if cookie_gemini and not st.session_state.get("gemini_api_key"):
+        st.session_state["gemini_api_key"] = cookie_gemini
     
     # セッション状態の初期化 (最上部)
     if "sel_imgs" not in st.session_state:
@@ -399,6 +402,8 @@ def main():
                         <div style="font-size: 0.85em; color: #64748b; margin-bottom: 10px;">
                             DeepLのAPIキーをお持ちの場合、入力すると翻訳エンジンに「DeepL」が追加されます。
                         <a href="https://www.deepl.com/pro-api" target="_blank">APIキーを取得</a>
+                        <span style="margin: 0 5px; color: #cbd5e1;">|</span>
+                        お持ちのAPIキー確認方法は<a href="https://www.deepl.com/ja/your-account/keys" target="_blank">こちら</a>
                         <br>
                         <span style="color: #22c55e; font-size: 0.9em;">
                             ※入力したキーはブラウザに保存され、次回以降も自動的に読み込まれます（30日間有効）。
@@ -490,7 +495,7 @@ def main():
                     value=st.session_state.get("gemini_api_key", ""),
                     type="password",
                     key="gemini_key_input",
-                    placeholder="AIzaSy..."
+                    placeholder="APIキーを入力してください (例: AIzaSy...)"
                 )
                 
                 # Gemini保存ボタン (入力値が現在の保存値と異なる場合のみ表示)
@@ -550,7 +555,7 @@ def main():
                 
                 # Display Progress
                 limit = 50 # Visual limit
-                usage_percent = min(current_count / limit, 1.0)
+                usage_percent = min(current_count / limit, 1.0) * 100
                 
                 st.markdown(f"""
                 <div style="margin-top: 10px; margin-bottom: 5px; font-weight: bold; font-size: 0.9em; color: #475569;">
@@ -558,7 +563,27 @@ def main():
                 </div>
                 """, unsafe_allow_html=True)
                 
-                st.progress(usage_percent)
+                # Custom Progress Bar (Same style as DeepL)
+                bar_html = f"""
+                <div style="
+                    background-color: #f1f5f9;
+                    width: 100%;
+                    height: 8px;
+                    border-radius: 4px;
+                    margin-top: 5px;
+                    overflow: hidden;
+                    margin-bottom: 10px;
+                ">
+                    <div style="
+                        background-color: #3b82f6;
+                        width: {usage_percent}%;
+                        height: 100%;
+                        border-radius: 4px;
+                        transition: width 0.5s ease;
+                    "></div>
+                </div>
+                """
+                st.markdown(bar_html, unsafe_allow_html=True)
                 
                 st.markdown("""
                 <div style="font-size: 0.8em; color: #94a3b8;">

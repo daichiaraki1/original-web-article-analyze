@@ -398,7 +398,10 @@ def translate_batch_gemini(paragraphs: List[dict], source_lang: str, gemini_api_
          output_placeholder.markdown(ui_accumulated_text)
 
     if error_message:
-        status_area.error(f"Gemini: エラーにより中断されましたが、取得できた結果を表示します。")
+        # Error is already in the results text, so just log or show a small warning if needed
+        # But user wants NO duplication.
+        # status_area.error(...) -> Removed
+        pass
     else:
         status_area.success(f"Gemini (Batch) 翻訳完了！")
         
