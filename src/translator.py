@@ -284,28 +284,35 @@ def translate_batch_gemini(paragraphs: List[dict], source_lang: str, gemini_api_
 
     # Process whatever text we got (even if empty or partial)
     if not full_response_text and error_message:
-         # If completely failed at start, re-raise to let caller handle standard error
-         raise Exception(error_message)
+         # Failed completely at start. Return error as text for the first block so it persists.
+         results = []
+         for i, p in enumerate(paragraphs):
+             if i == 0:
+                 results.append({
+                     "text": f"⚠️ Gemini Error: {error_message}", 
+                     "engine": "Gemini (Error)",
+                     "tag": p.get("tag", "p")
+                 })
+             else:
+                 results.append({
+                     "text": "...", 
+                     "engine": "Gemini (Error)",
+                     "tag": p.get("tag", "p")
+                 })
+         return results
 
     # Split by separator
     translated_texts = full_response_text.split("|||")
     
     # Clean up
-    translated_texts = [t.strip() for t in translated_texts if t.strip()] 
-    # Note: splitting might create empty strings if separators are adjacent or at ends. 
-    # But we asked to maintain structure. 
-    # Actually, simplistic split might be off if Gemini adds extra newlines. 
-    # Let's trust split("|||") but be careful with empty strings if they are valid translations?
-    # Re-reading prompt: "If a block is empty... keep it empty". 
-    # So we should strictly split by "|||".
-    translated_texts = full_response_text.split("|||")
-    translated_texts = [t.strip() for t in translated_texts] 
+    translated_texts = [t.strip() for t in translated_texts]  # Allow empty strings if valid
     
     # Handle length mismatch
     if len(translated_texts) < len(texts):
         shortage = len(texts) - len(translated_texts)
         # If we had an error, the last chunk might be cut off.
         # But we append error to the *next* slots.
+        # Use simple error message for missing parts
         suffix = f" (中断: {error_message})" if error_message else " (中断)"
         translated_texts.extend([f"⚠️ 翻訳停止{suffix}"] * shortage)
     elif len(translated_texts) > len(texts):
