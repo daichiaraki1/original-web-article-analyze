@@ -214,7 +214,7 @@ def _translate_chunk(text: str, engine_name: str, source_lang: str, deepl_api_ke
     return text, "None"
 
 
-def translate_batch_gemini(paragraphs: List[dict], source_lang: str, gemini_api_key: str, output_placeholder, status_area, model_name: str = "gemini-3-flash-preview"):
+def translate_batch_gemini(paragraphs: List[dict], source_lang: str, gemini_api_key: str, output_placeholder, status_area, model_name: str = "gemini-3-flash-preview", engine_label: str = "Gemini (Batch)"):
     """
     Translate all paragraphs in a single batch request using line-based format for robustness.
     """
@@ -259,7 +259,26 @@ def translate_batch_gemini(paragraphs: List[dict], source_lang: str, gemini_api_
 
     status_area.info(f"Gemini (Batch Mode) で一括翻訳中... ({len(texts)} 段落)")
     if output_placeholder:
-        output_placeholder.markdown("### ⏳ Geminiで一括翻訳中... (しばらくお待ちください)")
+        output_placeholder.markdown(
+            """
+            <div style="
+                color: #64748b; 
+                font-size: 0.9em; 
+                margin-bottom: 15px; 
+                display: flex; 
+                align-items: center; 
+                gap: 8px;
+                background-color: #f8fafc;
+                padding: 8px 12px;
+                border-radius: 6px;
+                border: 1px solid #e2e8f0;
+            ">
+                <div class="spinner">⏳</div>
+                <div>Geminiで一括翻訳中... (しばらくお待ちください)</div>
+            </div>
+            """, 
+            unsafe_allow_html=True
+        )
 
     full_response_text = ""
     streaming_text = ""
@@ -391,7 +410,7 @@ def translate_batch_gemini(paragraphs: List[dict], source_lang: str, gemini_api_
         t_text = translated_texts[i]
         
         # Detect if this specific item is the error message (for partial failure)
-        current_engine = "Gemini (Batch)"
+        current_engine = engine_label
         if error_message and t_text == error_message:
             current_engine = "Gemini (Error)"
         
@@ -461,7 +480,7 @@ def translate_paragraphs(paragraphs: List[dict], engine_name="Google", source_la
                 model_name = captured
 
         # Exception handling is done inside translate_batch_gemini
-        return translate_batch_gemini(paragraphs, source_lang, gemini_api_key, output_placeholder, status_area, model_name=model_name)
+        return translate_batch_gemini(paragraphs, source_lang, gemini_api_key, output_placeholder, status_area, model_name=model_name, engine_label=engine_name)
 
     # ... (Original loop for other engines)
     
