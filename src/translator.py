@@ -315,7 +315,7 @@ def translate_batch_gemini(paragraphs: List[dict], source_lang: str, gemini_api_
              
              if is_title:
                  # Simplified error for title to avoid duplication with body error
-                 error_message = f"⚠️ Gemini Error: {str(e)[:50]}... (詳細エラーは本文参照)"
+                 error_message = f"⚠️ Gemini Error: {str(e)} (詳細エラーは本文参照)"
              else:
                  error_message = f"""
                  <div style="
@@ -350,8 +350,8 @@ def translate_batch_gemini(paragraphs: List[dict], source_lang: str, gemini_api_
                                     <li>Google Cloudの課金設定（Pay-as-you-go）を有効にすると制限が緩和されます。</li>
                                 </ol>
                             </div>
-                            <div style="margin-top: 10px; font-size: 0.8em; color: #9f1239; opacity: 0.8;">
-                                詳細エラー: {str(e)[:200]}...
+                            <div style="margin-top: 10px; font-size: 0.8em; color: #9f1239; opacity: 0.8; word-break: break-all;">
+                                詳細エラー: {str(e)}
                             </div>
                         </div>
                     </div>
