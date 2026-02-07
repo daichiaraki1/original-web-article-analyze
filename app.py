@@ -390,10 +390,12 @@ def main():
                                 st.info("クリアしました")
                         
                         # 自動的に残量を確認・表示（キーがある場合）
+                        usage_ui_placeholder = st.empty()
                         saved_key = st.session_state.get("deepl_api_key")
                         if saved_key:
-                            ui_container = st.empty()
-                            render_deepl_usage_ui(saved_key, ui_container)
+                            render_deepl_usage_ui(saved_key, usage_ui_placeholder)
+                        else:
+                            usage_ui_placeholder.empty()
                 
                 if 'lang_choice_label' not in locals():
                     # Fallback or error handling
