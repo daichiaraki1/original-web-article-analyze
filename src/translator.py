@@ -127,6 +127,7 @@ def _translate_chunk(text: str, engine_name: str, source_lang: str, deepl_api_ke
             if deepl_source:
                 init_args['source'] = deepl_source
             
+            print(f"DEBUG: DeepL Init Args: {init_args}, Text len: {len(text)}")
             res = DeeplTranslator(**init_args).translate(text)
             return (res if res else text), "DeepL"
         except Exception as e:
