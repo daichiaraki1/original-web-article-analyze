@@ -376,10 +376,9 @@ def main():
                         saved_key = st.session_state.get("deepl_api_key")
                         if saved_key:
                             st.markdown("---")
-                            st.markdown("**DeepL API使用状況**")
                             
                             # キャッシュがない、または更新ボタンが押された場合に取得
-                            if "deepl_usage_cache" not in st.session_state or st.button("🔄 更新", key="refresh_deepl_usage"):
+                            if "deepl_usage_cache" not in st.session_state:
                                 with st.spinner("使用状況を取得中..."):
                                     st.session_state["deepl_usage_cache"] = get_deepl_usage(saved_key)
                             
@@ -387,14 +386,30 @@ def main():
                             
                             if "error" in usage:
                                 st.error(f"取得失敗: {usage['error']}")
+                                if st.button("再試行", key="retry_deepl_usage"):
+                                     if "deepl_usage_cache" in st.session_state:
+                                         del st.session_state["deepl_usage_cache"]
+                                     st.rerun()
                             else:
                                 count = usage['character_count']
                                 limit = usage['character_limit']
                                 percent = (count / limit * 100) if limit > 0 else 0
                                 
-                                # プログレスバーの表示改善
+                                # レイアウト調整: テキスト情報と更新ボタンを横並び
+                                u_col1, u_col2 = st.columns([4, 1])
+                                with u_col1:
+                                    st.markdown(f"**DeepL使用状況**: {count:,} / {limit:,} 文字 ({percent:.1f}%)")
+                                with u_col2:
+                                    if st.button("🔄 更新", key="refresh_deepl_usage"):
+                                        if "deepl_usage_cache" in st.session_state:
+                                            del st.session_state["deepl_usage_cache"]
+                                        st.rerun()
+                                
+                                # プログレスバー（0%でも少し見えるように最小値を設定するか、ラベルを付与）
+                                # Streamlitのprogress barはラベル引数が非推奨になったり復活したり不安定なため、上部にテキスト、下部にバーを配置
                                 st.progress(min(percent / 100, 1.0))
-                                st.info(f"使用済み: {count:,} / 上限: {limit:,} 文字 ({percent:.1f}%)")
+                                if percent < 2.0:
+                                    st.caption("※ 使用量が少ないため、バーが短く表示されています")
                         
                         # 保存済みキーがあれば表示
                         if st.session_state.get("deepl_api_key"):
