@@ -335,7 +335,11 @@ def main():
             # so that API info remains visible after translation.
             
             # 言語選択とDeepL API設定
-            lang_col1, lang_col2, lang_col3 = st.columns([1, 2, 1])
+            # Change: Equal width for DeepL and Gemini settings (Request: "same width")
+            # col1: Language Select (Small)
+            # col2: DeepL Settings (Medium)
+            # col3: Gemini Settings (Medium - same as DeepL)
+            lang_col1, lang_col2, lang_col3 = st.columns([1, 2, 2])
         
             # 自動判定: コンテンツから言語を推定してデフォルト設定
             if "src_lang_select" not in st.session_state:
@@ -468,7 +472,7 @@ def main():
                         render_deepl_usage_ui(saved_key, usage_placeholder)
             
             # Gemini APIキー設定（折りたたみ形式）
-            with lang_col3.expander("🧠 Gemini API設定", expanded=False):
+            with lang_col3.expander("🧠 Gemini APIキー設定", expanded=False):
                 st.markdown("""
                     <div style="font-size: 0.85em; color: #64748b; margin-bottom: 10px;">
                         Google AI StudioのAPIキーを入力すると「Gemini」が追加されます。<br>
