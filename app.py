@@ -311,121 +311,121 @@ def main():
                 "英語": "en"
             }
             
-            # 翻訳がまだ実行されていない場合
-            settings_section_placeholder = st.empty()
-            if t_key not in st.session_state:
-                with settings_section_placeholder.container():
-                    # 言語選択とDeepL API設定
-                    lang_col1, lang_col2, lang_col3 = st.columns([1, 2, 1])
+            # Change: Render Settings UI ALWAYS (not just when t_key is missing)
+            # so that API info remains visible after translation.
+            
+            # 言語選択とDeepL API設定
+            lang_col1, lang_col2, lang_col3 = st.columns([1, 2, 1])
+        
+            # 自動判定: コンテンツから言語を推定してデフォルト設定
+            if "src_lang_select" not in st.session_state:
+                detected_code = detect_language(src_article.text[:2000] if src_article.text else "")
                 
-                # 自動判定: コンテンツから言語を推定してデフォルト設定
-                if "src_lang_select" not in st.session_state:
-                    detected_code = detect_language(src_article.text[:2000] if src_article.text else "")
-                    
-                    # 判定ロジック
-                    is_english = detected_code.lower().startswith("en")
-                    is_chinese = detected_code.lower().startswith("zh") or detected_code == "mixed" # mixedも中国語扱い（または次でFallback）
+                # 判定ロジック
+                is_english = detected_code.lower().startswith("en")
+                is_chinese = detected_code.lower().startswith("zh") or detected_code == "mixed" # mixedも中国語扱い（または次でFallback）
 
-                    if is_english:
-                         st.session_state["src_lang_select"] = "英語"
-                    elif "weixin.qq.com" in src_url:
-                        # WeChatの場合は、英語以外（unknown, ja, mixed, ko等）はすべて中国語とみなす
-                        st.session_state["src_lang_select"] = "中国語 (簡体字)"
-                    elif is_chinese:
-                        if "tw" in detected_code.lower() or "hant" in detected_code.lower():
-                            st.session_state["src_lang_select"] = "中国語 (繁体字)"
-                        else:
-                            st.session_state["src_lang_select"] = "中国語 (簡体字)"
+                if is_english:
+                        st.session_state["src_lang_select"] = "英語"
+                elif "weixin.qq.com" in src_url:
+                    # WeChatの場合は、英語以外（unknown, ja, mixed, ko等）はすべて中国語とみなす
+                    st.session_state["src_lang_select"] = "中国語 (簡体字)"
+                elif is_chinese:
+                    if "tw" in detected_code.lower() or "hant" in detected_code.lower():
+                        st.session_state["src_lang_select"] = "中国語 (繁体字)"
                     else:
-                        # その他の言語 (es, fr, ja等) -> 自動検出
-                        st.session_state["src_lang_select"] = "自動検出"
+                        st.session_state["src_lang_select"] = "中国語 (簡体字)"
+                else:
+                    # その他の言語 (es, fr, ja等) -> 自動検出
+                    st.session_state["src_lang_select"] = "自動検出"
 
-                # 3. 言語選択UI (ラジオボタン)
-                # session_stateにあればそれをindexとして使う
-                lang_options = ["自動検出", "中国語 (簡体字)", "中国語 (繁体字)", "英語"]
-                current_selection = st.session_state.get("src_lang_select", "自動検出")
-                if current_selection not in lang_options:
-                    current_selection = "自動検出"
-                
-                default_index = lang_options.index(current_selection)
+            # 3. 言語選択UI (ラジオボタン)
+            # session_stateにあればそれをindexとして使う
+            lang_options = ["自動検出", "中国語 (簡体字)", "中国語 (繁体字)", "英語"]
+            current_selection = st.session_state.get("src_lang_select", "自動検出")
+            if current_selection not in lang_options:
+                current_selection = "自動検出"
+            
+            default_index = lang_options.index(current_selection)
 
-                # ここでキーを指定してsession_stateと連動させる
-                # on_changeは不要（keyがあるため自動更新されるが、値を強制するためにindexを使用）
-                with lang_col2:
-                    st.markdown("<div style='margin-bottom: 5px; font-weight: bold; color: #475569;'>元記事の言語</div>", unsafe_allow_html=True)
-                    lang_choice_label = st.radio(
-                        "元記事の言語",
-                        options=lang_options,
-                        index=default_index,
-                        horizontal=True,
-                        key="src_lang_radio",
-                        label_visibility="collapsed"
-                    )
+            with lang_col1:
+                st.markdown("##### 元記事の言語")
+                lang_choice_label = st.radio(
+                    "元記事の言語",
+                    lang_options,
+                    index=default_index,
+                    key="src_lang_select_radio",
+                    label_visibility="collapsed",
+                    horizontal=True
+                )
+                # Radioの変更をsession_stateに反映（key指定しているので自動だが、明示的同期が必要な場合あり）
+                if lang_choice_label != st.session_state.get("src_lang_select"):
+                     st.session_state["src_lang_select"] = lang_choice_label
+                     # 言語変更時に翻訳結果をクリアするか？
+                     # ユーザー体験的にはクリアしたほうが自然だが、今回は維持する？
+                     # 維持すると再翻訳ボタンが必要。
+                     st.rerun()
                 
-                # ラジオボタンの変更をsession_stateに反映（key="src_lang_radio"があるのでst.session_state.src_lang_radioに入るが、
-                # 既存のロジックが src_lang_select を使っているため同期させる）
-                if st.session_state.src_lang_radio != st.session_state.get("src_lang_select"):
-                    st.session_state["src_lang_select"] = st.session_state.src_lang_radio
-                    st.rerun() # リロードして反映
+            # DeepL APIキー入力（折りたたみ形式）
+            with lang_col2.expander("🔑 DeepL APIキー設定（任意）", expanded=False):
+                    st.markdown("""
+                        <div style="font-size: 0.85em; color: #64748b; margin-bottom: 10px;">
+                            DeepLのAPIキーをお持ちの場合、入力すると翻訳エンジンに「DeepL」が追加されます。
+                        <a href="https://www.deepl.com/pro-api" target="_blank">APIキーを取得</a>
+                        <br>
+                        <span style="color: #ef4444; font-size: 0.9em;">
+                            ※保存されたキーは、ブラウザの再読み込みやタブを閉じた際にクリアされます。
+                        </span>
+                    </div>
+                    """, unsafe_allow_html=True)
                     
-                # DeepL APIキー入力（折りたたみ形式）
-                with lang_col2.expander("🔑 DeepL APIキー設定（任意）", expanded=False):
-                        st.markdown("""
-                            <div style="font-size: 0.85em; color: #64748b; margin-bottom: 10px;">
-                                DeepLのAPIキーをお持ちの場合、入力すると翻訳エンジンに「DeepL」が追加されます。
-                            <a href="https://www.deepl.com/pro-api" target="_blank">APIキーを取得</a>
-                            <br>
-                            <span style="color: #ef4444; font-size: 0.9em;">
-                                ※保存されたキーは、ブラウザの再読み込みやタブを閉じた際にクリアされます。
-                            </span>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        
-                        deepl_key_input = st.text_input(
-                            "DeepL APIキー",
-                            value=st.session_state.get("deepl_api_key", ""),
-                            type="password",
-                            key="deepl_key_input",
-                            placeholder="xxxx-xxxx-xxxx-xxxx"
-                        )
-                        
-                        # 保存ボタン
-                        auth_changed = False
-                        if st.button("APIキーを保存", key="save_deepl_key"):
-                            st.session_state["deepl_api_key"] = deepl_key_input
-                            # 保存時はキャッシュクリアして再取得させる
-                            if "deepl_usage_cache" in st.session_state:
-                                del st.session_state["deepl_usage_cache"]
-                            auth_changed = True
-                        
-                        # Revert: Show status and usage INSIDE the expander as requested by user
-                        # Use explicit placeholders to try to manage state better
-                        message_placeholder = st.empty()
-                        usage_placeholder = st.empty()
-                        
-                        # 1. 保存/クリアのメッセージ表示
-                        if auth_changed:
-                            with message_placeholder.container():
-                                if deepl_key_input:
-                                    st.success("✅ 保存しました")
-                                else:
-                                    st.info("クリアしました")
+                    deepl_key_input = st.text_input(
+                        "DeepL APIキー",
+                        value=st.session_state.get("deepl_api_key", ""),
+                        type="password",
+                        key="deepl_key_input",
+                        placeholder="xxxx-xxxx-xxxx-xxxx"
+                    )
+                    
+                    # 保存ボタン
+                    auth_changed = False
+                    if st.button("APIキーを保存", key="save_deepl_key"):
+                        st.session_state["deepl_api_key"] = deepl_key_input
+                        # 保存時はキャッシュクリアして再取得させる
+                        if "deepl_usage_cache" in st.session_state:
+                            del st.session_state["deepl_usage_cache"]
+                        auth_changed = True
+                    
+                    # Revert: Show status and usage INSIDE the expander as requested by user
+                    # Use explicit placeholders to try to manage state better
+                    message_placeholder = st.empty()
+                    usage_placeholder = st.empty()
+                    
+                    # 1. 保存/クリアのメッセージ表示
+                    if auth_changed:
+                        with message_placeholder.container():
+                            if deepl_key_input:
+                                st.success("✅ 保存しました")
+                            else:
+                                st.info("クリアしました")
 
-                        # 2. 自動的に残量を確認・表示（キーがある場合）
-                        saved_key = st.session_state.get("deepl_api_key")
-                        if saved_key:
-                            # Pass the placeholder directly
-                            render_deepl_usage_ui(saved_key, usage_placeholder)
-                
-                if 'lang_choice_label' not in locals():
-                    # Fallback or error handling
-                    # This should theoretically not happen if flow is correct, but avoids NameError
-                    lang_choice_label = "自動検出" 
-                
-                source_lang = lang_map[lang_choice_label]
-                
-                st.markdown("<br>", unsafe_allow_html=True)
-                
+                    # 2. 自動的に残量を確認・表示（キーがある場合）
+                    saved_key = st.session_state.get("deepl_api_key")
+                    if saved_key:
+                        # Pass the placeholder directly
+                        render_deepl_usage_ui(saved_key, usage_placeholder)
+            
+            if 'lang_choice_label' not in locals():
+                # Fallback or error handling
+                # This should theoretically not happen if flow is correct, but avoids NameError
+                lang_choice_label = "自動検出" 
+            
+            source_lang = lang_map[lang_choice_label]
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+
+            # Pre-Translation Placeholder Logic (Only show if NOT translated yet)
+            if t_key not in st.session_state:
                 st.markdown("""
                 <style>
                     .pre-trans-block {
@@ -588,50 +588,10 @@ def main():
                 
                 show_dual_view = False
             else:
-                settings_section_placeholder.empty() # Clear settings UI in result view logic
+                # settings_section_placeholder.empty() # Removed: Keep settings visible
                 
-                # FORCE CLEAR GHOST UI via JS
-                # Streamlit sometimes fails to remove elements. This script forces removal of the old settings block.
-                # We target the specific text unique to the old UI.
-                st.components.v1.html("""
-                    <script>
-                        // Helper to find and remove elements containing specific text
-                        function removeGhostElements() {
-                            const elements = window.parent.document.querySelectorAll('*');
-                            for (let i = 0; i < elements.length; i++) {
-                                const el = elements[i];
-                                // Check if element contains the specific ghost text and is NOT the main script
-                                if (el.shadowRoot) continue; // Skip shadow roots for now
-                                if (el.tagName === 'SCRIPT' || el.tagName === 'STYLE') continue;
-                                
-                                // Target the "DeepL Usage" section specifically
-                                if (el.innerText && el.innerText.includes('DeepL使用状況 (月次)') && el.innerText.includes('Render Count')) {
-                                    // Found a potential ghost. Check if it's the "old" one (Count 1 at bottom? Hard to detect structure)
-                                    // Just hide it if found in this phase (result phase)
-                                    // But wait, we don't want to hide legitimate stuff if we re-add it?
-                                    // Actually, in Result View, NO DeepL usage UI should be visible at all.
-                                    el.style.display = 'none';
-                                    console.log("Ghost UI hidden:", el);
-                                }
-                                
-                                // Also target the "API Key Settings" expander title if it persists
-                                if (el.innerText && el.innerText.includes('DeepL APIキー設定') && el.tagName === 'DIV') {
-                                    // Optional: Hide expander title if needed
-                                }
-
-                                // NEW: Target the "API Key Set" text (Ghost Text)
-                                if (el.innerText && el.innerText.includes('APIキー設定済み') && el.innerText.includes('✓')) {
-                                    el.style.display = 'none';
-                                    console.log("Ghost API Key Text hidden:", el);
-                                }
-                            }
-                        }
-                        // Run immediately and after a short delay
-                        removeGhostElements();
-                        setTimeout(removeGhostElements, 500);
-                        setTimeout(removeGhostElements, 2000);
-                    </script>
-                """, height=0)
+                # JS injection removed as we want to keep the UI visible
+                pass
 
                 # 翻訳済みの場合
                 # source_lang は共通のlang_mapから取得（すでに上で定義済み）
