@@ -360,30 +360,41 @@ def main():
                             placeholder="xxxx-xxxx-xxxx-xxxx"
                         )
                         
-                        # 保存ボタンと使用量確認
-                        col_save, col_check = st.columns([1, 1])
-                        with col_save:
-                            if st.button("APIキーを保存", key="save_deepl_key"):
-                                st.session_state["deepl_api_key"] = deepl_key_input
-                                if deepl_key_input:
-                                    st.success("✅ 保存しました")
-                                else:
-                                    st.info("クリアしました")
+                        # 保存ボタン
+                        if st.button("APIキーを保存", key="save_deepl_key"):
+                            st.session_state["deepl_api_key"] = deepl_key_input
+                            # 保存時はキャッシュクリアして再取得させる
+                            if "deepl_usage_cache" in st.session_state:
+                                del st.session_state["deepl_usage_cache"]
+                            
+                            if deepl_key_input:
+                                st.success("✅ 保存しました")
+                            else:
+                                st.info("クリアしました")
                         
-                        with col_check:
-                            if st.button("残量を確認", key="check_deepl_usage"):
-                                if not st.session_state.get("deepl_api_key"):
-                                    st.error("APIキーが保存されていません")
-                                else:
-                                    usage = get_deepl_usage(st.session_state["deepl_api_key"])
-                                    if "error" in usage:
-                                        st.error(f"取得失敗: {usage['error']}")
-                                    else:
-                                        count = usage['character_count']
-                                        limit = usage['character_limit']
-                                        percent = (count / limit * 100) if limit > 0 else 0
-                                        st.info(f"使用済み: {count:,} / 上限: {limit:,} 文字 ({percent:.1f}%)")
-                                        st.progress(min(percent / 100, 1.0))
+                        # 自動的に残量を確認・表示（キーがある場合）
+                        saved_key = st.session_state.get("deepl_api_key")
+                        if saved_key:
+                            st.markdown("---")
+                            st.markdown("**DeepL API使用状況**")
+                            
+                            # キャッシュがない、または更新ボタンが押された場合に取得
+                            if "deepl_usage_cache" not in st.session_state or st.button("🔄 更新", key="refresh_deepl_usage"):
+                                with st.spinner("使用状況を取得中..."):
+                                    st.session_state["deepl_usage_cache"] = get_deepl_usage(saved_key)
+                            
+                            usage = st.session_state["deepl_usage_cache"]
+                            
+                            if "error" in usage:
+                                st.error(f"取得失敗: {usage['error']}")
+                            else:
+                                count = usage['character_count']
+                                limit = usage['character_limit']
+                                percent = (count / limit * 100) if limit > 0 else 0
+                                
+                                # プログレスバーの表示改善
+                                st.progress(min(percent / 100, 1.0))
+                                st.info(f"使用済み: {count:,} / 上限: {limit:,} 文字 ({percent:.1f}%)")
                         
                         # 保存済みキーがあれば表示
                         if st.session_state.get("deepl_api_key"):
