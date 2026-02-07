@@ -170,8 +170,8 @@ def _translate_chunk(text: str, engine_name: str, source_lang: str, deepl_api_ke
         
         try:
             genai.configure(api_key=gemini_api_key)
-            # Use the latest fast model per user request
-            model = genai.GenerativeModel('gemini-2.0-flash')
+            # Use stable model as 2.0/3.0 might be experimental or require specific access
+            model = genai.GenerativeModel('gemini-1.5-flash')
             
             # Safety settings to avoid blocking content
             safety_settings = [
