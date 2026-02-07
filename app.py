@@ -306,9 +306,11 @@ def main():
             }
             
             # 翻訳がまだ実行されていない場合
+            settings_section_placeholder = st.empty()
             if t_key not in st.session_state:
-                # 言語選択とDeepL API設定
-                lang_col1, lang_col2, lang_col3 = st.columns([1, 2, 1])
+                with settings_section_placeholder.container():
+                    # 言語選択とDeepL API設定
+                    lang_col1, lang_col2, lang_col3 = st.columns([1, 2, 1])
                 
                 # 自動判定: コンテンツから言語を推定してデフォルト設定
                 if "src_lang_select" not in st.session_state:
@@ -577,6 +579,8 @@ def main():
                 
                 show_dual_view = False
             else:
+                settings_section_placeholder.empty() # Clear settings UI in result view logic
+                
                 # 翻訳済みの場合
                 # source_lang は共通のlang_mapから取得（すでに上で定義済み）
                 current_lang_label = st.session_state.get("src_lang_select", "自動検出")
