@@ -431,7 +431,6 @@ def translate_paragraphs(paragraphs: List[dict], engine_name="Google", source_la
     # Gemini Optimization: Batch Translation
     # If engine is Gemini, we use a single request (or few chunks) to avoid Rate Limits (15 RPM / 20 RPD)
     if engine_name == "Gemini":
-    if engine_name == "Gemini":
         # Exception handling is done inside translate_batch_gemini
         return translate_batch_gemini(paragraphs, source_lang, gemini_api_key, output_placeholder, status_area)
 
