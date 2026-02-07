@@ -286,7 +286,7 @@ def render_deepl_usage_ui(api_key: str, placeholder=None):
         if not api_key:
             return
 
-        st.markdown("---")
+        # st.markdown("---") # Removed for compact display
         
         # ... (cache logic) ...
         if "deepl_usage_cache" not in st.session_state:
@@ -307,14 +307,17 @@ def render_deepl_usage_ui(api_key: str, placeholder=None):
             limit = usage['character_limit']
             percent = (count / limit * 100) if limit > 0 else 0
             
-            # Simplified Layout (No nested columns to avoid issues)
-            st.markdown(f"**DeepL使用状況 (月次)**: {count:,} / {limit:,} 文字 ({percent:.1f}%)")
+            # Compact Layout: Text and Button in one row
+            uc_col1, uc_col2 = st.columns([5, 1])
+            with uc_col1:
+                st.markdown(f"**DeepL使用状況 (月次)**: {count:,} / {limit:,} 文字 ({percent:.1f}%)")
             
-            # Refresh button (inline-ish or below)
-            if st.button("🔄 更新", key="refresh_deepl_usage"):
-                if "deepl_usage_cache" in st.session_state:
-                    del st.session_state["deepl_usage_cache"]
-                st.rerun()
+            with uc_col2:
+                # Refresh button (icon only to save space)
+                if st.button("🔄", key="refresh_deepl_usage", help="使用状況を更新"):
+                    if "deepl_usage_cache" in st.session_state:
+                        del st.session_state["deepl_usage_cache"]
+                    st.rerun()
 
             
             # カスタムプログレスバー (背景グレー、使用率ブルー)
