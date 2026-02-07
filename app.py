@@ -2,7 +2,7 @@ import textwrap
 import streamlit as st
 import streamlit.components.v1 as components
 from src.scraper import load_article_v9
-from src.translator import translate_paragraphs, get_deepl_usage
+from src.translator import translate_paragraphs, get_deepl_usage, render_deepl_usage_ui
 from src.utils import create_images_zip, fetch_image_data_v10, make_diff_html, detect_language
 
 # --- メイン UI ---
@@ -392,63 +392,7 @@ def main():
                         # 自動的に残量を確認・表示（キーがある場合）
                         saved_key = st.session_state.get("deepl_api_key")
                         if saved_key:
-                            st.markdown("---")
-                            
-                            # キャッシュがない、または更新ボタンが押された場合に取得
-                            if "deepl_usage_cache" not in st.session_state:
-                                with st.spinner("使用状況を取得中..."):
-                                    st.session_state["deepl_usage_cache"] = get_deepl_usage(saved_key)
-                            
-                            usage = st.session_state["deepl_usage_cache"]
-                            
-                            if "error" in usage:
-                                st.error(f"取得失敗: {usage['error']}")
-                                if st.button("再試行", key="retry_deepl_usage"):
-                                     if "deepl_usage_cache" in st.session_state:
-                                         del st.session_state["deepl_usage_cache"]
-                                     st.rerun()
-                            else:
-                                count = usage['character_count']
-                                limit = usage['character_limit']
-                                percent = (count / limit * 100) if limit > 0 else 0
-                                
-                                # レイアウト調整: テキスト情報と更新ボタンを横並び
-                                u_col1, u_col2 = st.columns([4, 1])
-                                with u_col1:
-                                    st.markdown(f"**DeepL使用状況 (月次)**: {count:,} / {limit:,} 文字 ({percent:.1f}%)")
-                                with u_col2:
-                                    if st.button("🔄 更新", key="refresh_deepl_usage"):
-                                        if "deepl_usage_cache" in st.session_state:
-                                            del st.session_state["deepl_usage_cache"]
-                                        st.rerun()
-                                
-                                # カスタムプログレスバー (背景グレー、使用率ブルー)
-                                bar_html = f"""
-                                <div style="
-                                    background-color: #f1f5f9;
-                                    width: 100%;
-                                    height: 8px;
-                                    border-radius: 4px;
-                                    margin-top: 5px;
-                                    overflow: hidden;
-                                ">
-                                    <div style="
-                                        background-color: #3b82f6;
-                                        width: {min(percent, 100)}%;
-                                        height: 100%;
-                                        border-radius: 4px;
-                                    "></div>
-                                </div>
-                                """
-                                st.markdown(bar_html, unsafe_allow_html=True)
-                        
-                        # 保存済みキーがあれば表示
-                        if st.session_state.get("deepl_api_key"):
-                            st.markdown(f"""
-                                <div style="font-size: 0.8em; color: #22c55e; margin-top: 5px;">
-                                    ✓ APIキー設定済み（{st.session_state['deepl_api_key'][:8]}...）
-                                </div>
-                            """, unsafe_allow_html=True)
+                            render_deepl_usage_ui(saved_key)
                 
                 source_lang = lang_map[lang_choice_label]
                 
