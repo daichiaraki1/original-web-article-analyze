@@ -431,13 +431,9 @@ def translate_paragraphs(paragraphs: List[dict], engine_name="Google", source_la
     # Gemini Optimization: Batch Translation
     # If engine is Gemini, we use a single request (or few chunks) to avoid Rate Limits (15 RPM / 20 RPD)
     if engine_name == "Gemini":
-        try:
-            return translate_batch_gemini(paragraphs, source_lang, gemini_api_key, output_placeholder, status_area)
-        except Exception as e:
-            # If batch fails, show error and stop
-            status_area.error(f"Gemini Batch Error: {str(e)[:100]}...")
-            # Return partial/empty with error
-            return [{"text": p.get("text", ""), "engine": f"Gemini (Batch Error: {str(e)[:50]})", "tag": p.get("tag", "p")} for p in paragraphs]
+    if engine_name == "Gemini":
+        # Exception handling is done inside translate_batch_gemini
+        return translate_batch_gemini(paragraphs, source_lang, gemini_api_key, output_placeholder, status_area)
 
     # ... (Original loop for other engines)
     

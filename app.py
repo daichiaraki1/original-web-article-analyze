@@ -25,16 +25,20 @@ def main():
     st.set_page_config(layout="wide", page_title="中国メディア解析ツール")
 
     # Initialize Cookie Manager AFTER page config
-    cookie_manager = get_manager()
+    # Use a fixed key to ensure component stability across reruns
+    cookie_manager = stx.CookieManager(key="v9_cookie_manager")
     
     # Check for cookie-stored API keys on load
+    cookies = cookie_manager.get_all()
+    # print(f"DEBUG: Cookies loaded: {cookies}", flush=True) 
+    
     # DeepL
-    cookie_key = cookie_manager.get("deepl_api_key_cookie")
+    cookie_key = cookies.get("deepl_api_key_cookie") if cookies else None
     if cookie_key and not st.session_state.get("deepl_api_key"):
         st.session_state["deepl_api_key"] = cookie_key
 
     # Gemini
-    cookie_gemini = cookie_manager.get("gemini_api_key_cookie")
+    cookie_gemini = cookies.get("gemini_api_key_cookie") if cookies else None
     if cookie_gemini and not st.session_state.get("gemini_api_key"):
         st.session_state["gemini_api_key"] = cookie_gemini
     
