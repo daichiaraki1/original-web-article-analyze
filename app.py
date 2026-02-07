@@ -373,8 +373,12 @@ def main():
                         st.markdown("""
                             <div style="font-size: 0.85em; color: #64748b; margin-bottom: 10px;">
                                 DeepLのAPIキーをお持ちの場合、入力すると翻訳エンジンに「DeepL」が追加されます。
-                                <a href="https://www.deepl.com/pro-api" target="_blank">APIキーを取得</a>
-                            </div>
+                            <a href="https://www.deepl.com/pro-api" target="_blank">APIキーを取得</a>
+                            <br>
+                            <span style="color: #ef4444; font-size: 0.9em;">
+                                ※保存されたキーは、ブラウザの再読み込みやタブを閉じた際にクリアされます。
+                            </span>
+                        </div>
                         """, unsafe_allow_html=True)
                         
                         deepl_key_input = st.text_input(
