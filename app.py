@@ -422,7 +422,8 @@ def main():
                         # If key is saved and unchanged, show nothing or just text
                         st.markdown("""
                             <div style="
-                                margin-top: 8px; 
+                                margin-top: -15px; 
+                                margin-bottom: 25px;
                                 padding: 8px 12px; 
                                 background-color: #dcfce7; 
                                 color: #166534; 

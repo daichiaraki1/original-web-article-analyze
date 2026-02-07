@@ -307,18 +307,14 @@ def render_deepl_usage_ui(api_key: str, placeholder=None):
             limit = usage['character_limit']
             percent = (count / limit * 100) if limit > 0 else 0
             
-            # Compact Layout: Text and Button in one row
-            # Use columns with spacer to keep button close to text
-            uc_col1, uc_col2, uc_spacer = st.columns([2.5, 0.4, 1.5]) 
-            with uc_col1:
-                st.markdown(f"**DeepL使用状況 (月次)**: {count:,} / {limit:,} 文字 ({percent:.1f}%)")
+            # Layout: Text, then Button below
+            st.markdown(f"**DeepL使用状況 (月次)**: {count:,} / {limit:,} 文字 ({percent:.1f}%)")
             
-            with uc_col2:
-                # Refresh button with minimal width
-                if st.button("更新", key="refresh_deepl_usage", help="使用状況を更新"):
-                    if "deepl_usage_cache" in st.session_state:
-                        del st.session_state["deepl_usage_cache"]
-                    st.rerun()
+            # Refresh button (Text instead of Emoji per user request)
+            if st.button("更新", key="refresh_deepl_usage", help="使用状況を更新"):
+                if "deepl_usage_cache" in st.session_state:
+                    del st.session_state["deepl_usage_cache"]
+                st.rerun()
 
             
             # カスタムプログレスバー (背景グレー、使用率ブルー)
