@@ -270,75 +270,80 @@ def get_deepl_usage(deepl_api_key: str) -> dict:
         return {'error': f"NetError: {str(e)}"}
 
 
-def render_deepl_usage_ui(api_key: str):
+def render_deepl_usage_ui(api_key: str, placeholder=None):
     """
     DeepL使用状況を表示するUIコンポーネント
+    placeholder: 表示先のst.empty()またはst.container()
     """
-    # Debug: Explicit Counter
-    if "render_count_debug" not in st.session_state:
-        st.session_state.render_count_debug = 0
-    st.session_state.render_count_debug += 1
-    current_count = st.session_state.render_count_debug
-    
-    st.markdown(f"**[DEBUG] Render Count: {current_count}**")
+    if placeholder is None:
+        placeholder = st.container()
 
-    if not api_key:
-        return
+    with placeholder.container():
+        # Debug: Explicit Counter
+        if "render_count_debug" not in st.session_state:
+            st.session_state.render_count_debug = 0
+        st.session_state.render_count_debug += 1
+        current_count = st.session_state.render_count_debug
+        
+        st.markdown(f"**[DEBUG] Render Count: {current_count}**")
+    
+        if not api_key:
+            return
 
-    st.markdown("---")
-    
-    # ... (cache logic) ...
-    if "deepl_usage_cache" not in st.session_state:
-        with st.spinner("使用状況を取得中..."):
-            st.session_state["deepl_usage_cache"] = get_deepl_usage(api_key)
-    
-    usage = st.session_state["deepl_usage_cache"]
-    
-    if "error" in usage:
-        # ... error handling ...
-        st.error(f"取得失敗: {usage['error']}")
-        if st.button("再試行", key="retry_deepl_usage"):
-             if "deepl_usage_cache" in st.session_state:
-                 del st.session_state["deepl_usage_cache"]
-             st.rerun()
-    else:
-        count = usage['character_count']
-        limit = usage['character_limit']
-        percent = (count / limit * 100) if limit > 0 else 0
+        st.markdown("---")
         
-        # Simplified Layout (No nested columns to avoid issues)
-        st.markdown(f"**DeepL使用状況 (月次)**: {count:,} / {limit:,} 文字 ({percent:.1f}%)")
+        # ... (cache logic) ...
+        if "deepl_usage_cache" not in st.session_state:
+            with st.spinner("使用状況を取得中..."):
+                st.session_state["deepl_usage_cache"] = get_deepl_usage(api_key)
         
-        # Refresh button (inline-ish or below)
-        if st.button("🔄 更新", key="refresh_deepl_usage"):
-            if "deepl_usage_cache" in st.session_state:
-                del st.session_state["deepl_usage_cache"]
-            st.rerun()
+        usage = st.session_state["deepl_usage_cache"]
+        
+        if "error" in usage:
+            # ... error handling ...
+            st.error(f"取得失敗: {usage['error']}")
+            if st.button("再試行", key="retry_deepl_usage"):
+                 if "deepl_usage_cache" in st.session_state:
+                     del st.session_state["deepl_usage_cache"]
+                 st.rerun()
+        else:
+            count = usage['character_count']
+            limit = usage['character_limit']
+            percent = (count / limit * 100) if limit > 0 else 0
+            
+            # Simplified Layout (No nested columns to avoid issues)
+            st.markdown(f"**DeepL使用状況 (月次)**: {count:,} / {limit:,} 文字 ({percent:.1f}%)")
+            
+            # Refresh button (inline-ish or below)
+            if st.button("🔄 更新", key="refresh_deepl_usage"):
+                if "deepl_usage_cache" in st.session_state:
+                    del st.session_state["deepl_usage_cache"]
+                st.rerun()
 
-        
-        # カスタムプログレスバー (背景グレー、使用率ブルー)
-        bar_html = f"""
-        <div style="
-            background-color: #f1f5f9;
-            width: 100%;
-            height: 8px;
-            border-radius: 4px;
-            margin-top: 5px;
-            overflow: hidden;
-        ">
+            
+            # カスタムプログレスバー (背景グレー、使用率ブルー)
+            bar_html = f"""
             <div style="
-                background-color: #3b82f6;
-                width: {min(percent, 100)}%;
-                height: 100%;
+                background-color: #f1f5f9;
+                width: 100%;
+                height: 8px;
                 border-radius: 4px;
-            "></div>
-        </div>
-        """
-        st.markdown(bar_html, unsafe_allow_html=True)
+                margin-top: 5px;
+                overflow: hidden;
+            ">
+                <div style="
+                    background-color: #3b82f6;
+                    width: {min(percent, 100)}%;
+                    height: 100%;
+                    border-radius: 4px;
+                "></div>
+            </div>
+            """
+            st.markdown(bar_html, unsafe_allow_html=True)
 
-    # APIキー設定済み表示
-    st.markdown(f"""
-        <div style="font-size: 0.8em; color: #22c55e; margin-top: 5px;">
-            ✓ APIキー設定済み（{api_key[:8]}...）
-        </div>
-    """, unsafe_allow_html=True)
+        # APIキー設定済み表示
+        st.markdown(f"""
+            <div style="font-size: 0.8em; color: #22c55e; margin-top: 5px;">
+                ✓ APIキー設定済み（{api_key[:8]}...）
+            </div>
+        """, unsafe_allow_html=True)
