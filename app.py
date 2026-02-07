@@ -20,6 +20,17 @@ def get_manager():
 
 cookie_manager = get_manager()
 
+# Check for cookie-stored API keys on load
+# DeepL
+cookie_key = cookie_manager.get("deepl_api_key_cookie")
+if cookie_key and not st.session_state.get("deepl_api_key"):
+    st.session_state["deepl_api_key"] = cookie_key
+
+# Gemini
+cookie_gemini = cookie_manager.get("gemini_api_key_cookie")
+if cookie_gemini and not st.session_state.get("gemini_api_key"):
+    st.session_state["gemini_api_key"] = cookie_gemini
+
 # --- メイン UI ---
 def main():
     st.set_page_config(layout="wide", page_title="中国メディア解析ツール")
@@ -375,11 +386,8 @@ def main():
                      # 維持すると再翻訳ボタンが必要。
                      st.rerun()
                 
-            # Check for cookie-stored API key on load
-            # Note: initialization must be at top level
-            cookie_key = cookie_manager.get("deepl_api_key_cookie")
-            if cookie_key and not st.session_state.get("deepl_api_key"):
-                st.session_state["deepl_api_key"] = cookie_key
+            # Check for cookie-stored API key on load -> Moved to global scope
+            # pass
         
             # DeepL APIキー入力（折りたたみ形式）
             with lang_col2.expander("🔑 DeepL APIキー設定（任意）", expanded=False):
@@ -459,6 +467,65 @@ def main():
                         # Pass the placeholder directly
                         render_deepl_usage_ui(saved_key, usage_placeholder)
             
+            # Gemini APIキー設定（折りたたみ形式）
+            with lang_col3.expander("🧠 Gemini API設定", expanded=False):
+                st.markdown("""
+                    <div style="font-size: 0.85em; color: #64748b; margin-bottom: 10px;">
+                        Google AI StudioのAPIキーを入力すると「Gemini」が追加されます。<br>
+                        (Free Tierで無料利用可能)
+                    <a href="https://aistudio.google.com/app/apikey" target="_blank">APIキーを取得</a>
+                    <br>
+                    <span style="color: #22c55e; font-size: 0.9em;">
+                        ※入力したキーはブラウザに保存され、次回以降も自動的に読み込まれます（30日間有効）。
+                    </span>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                gemini_key_input = st.text_input(
+                    "Gemini APIキー",
+                    value=st.session_state.get("gemini_api_key", ""),
+                    type="password",
+                    key="gemini_key_input",
+                    placeholder="AIzaSy..."
+                )
+                
+                # Gemini保存ボタン (入力値が現在の保存値と異なる場合のみ表示)
+                current_saved_gemini = st.session_state.get("gemini_api_key", "")
+                if gemini_key_input != current_saved_gemini:
+                    if st.button("Geminiキーをブラウザに保存", key="save_gemini_key"):
+                        st.session_state["gemini_api_key"] = gemini_key_input
+                        
+                        # Save to cookie for 30 days
+                        expires = datetime.datetime.now() + datetime.timedelta(days=30)
+                        cookie_manager.set("gemini_api_key_cookie", gemini_key_input, expires_at=expires)
+                        
+                        st.session_state["gemini_key_saved_success"] = True
+                        st.rerun()
+                else:
+                    if st.session_state.get("gemini_api_key"):
+                         st.markdown("""
+                            <div style="
+                                margin-top: -15px; 
+                                margin-bottom: 10px;
+                                padding: 8px 12px; 
+                                background-color: #dcfce7; 
+                                color: #166534; 
+                                border-radius: 6px; 
+                                font-size: 0.9em; 
+                                font-weight: 600;
+                                border: 1px solid #bbf7d0;
+                                display: inline-flex;
+                                align-items: center;
+                                gap: 6px;
+                            ">
+                                ✅ APIキーは保存されています
+                            </div>
+                        """, unsafe_allow_html=True)
+
+                if st.session_state.get("gemini_key_saved_success", False):
+                     st.success("✅ Geminiキーを保存しました")
+                     del st.session_state["gemini_key_saved_success"]
+
             if 'lang_choice_label' not in locals():
                 # Fallback or error handling
                 # This should theoretically not happen if flow is correct, but avoids NameError
@@ -537,7 +604,11 @@ def main():
                     
                     # エンジン選択ドロップダウン（選択時に翻訳開始）
                     # エンジン選択ドロップダウン（選択時に翻訳開始）
-                    engines = ["-- 選択してください --", "Google", "DeepL", "MyMemory"] if st.session_state.get("deepl_api_key") else ["-- 選択してください --", "Google", "MyMemory"]
+                    engines = ["-- 選択してください --", "Google", "MyMemory"]
+                    if st.session_state.get("deepl_api_key"):
+                        engines.insert(2, "DeepL")
+                    if st.session_state.get("gemini_api_key"):
+                        engines.insert(3 if "DeepL" in engines else 2, "Gemini")
                     selected_engine = st.selectbox(
                         "翻訳エンジン",
                         engines,
@@ -553,13 +624,15 @@ def main():
                                 src_article.structured_html_parts,
                                 engine_name=selected_engine,
                                 source_lang=source_lang,
-                                deepl_api_key=st.session_state.get("deepl_api_key")
+                                deepl_api_key=st.session_state.get("deepl_api_key"),
+                                gemini_api_key=st.session_state.get("gemini_api_key")
                             )
                             st.session_state[f"t_ttl_v9_{src_url}"] = translate_paragraphs(
                                 [{"tag": "h1", "text": src_article.title}],
                                 engine_name=selected_engine,
                                 source_lang=source_lang,
-                                deepl_api_key=st.session_state.get("deepl_api_key")
+                                deepl_api_key=st.session_state.get("deepl_api_key"),
+                                gemini_api_key=st.session_state.get("gemini_api_key")
                             )[0]["text"]
                         st.rerun()
                 

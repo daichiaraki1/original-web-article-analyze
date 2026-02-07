@@ -170,8 +170,8 @@ def _translate_chunk(text: str, engine_name: str, source_lang: str, deepl_api_ke
         
         try:
             genai.configure(api_key=gemini_api_key)
-            # Use stable model as 2.0/3.0 might be experimental or require specific access
-            model = genai.GenerativeModel('gemini-1.5-flash')
+            # Use the latest available model from user's list
+            model = genai.GenerativeModel('gemini-3-flash-preview')
             
             # Safety settings to avoid blocking content
             safety_settings = [
@@ -206,6 +206,8 @@ def _translate_chunk(text: str, engine_name: str, source_lang: str, deepl_api_ke
                 return text, "Gemini (Empty Response)"
                 
         except Exception as e:
+            # Revert to simple error return, remove UI error for production feel unless debugging needed
+            # st.error(f"Gemini Error: {str(e)}") 
             return text, f"Gemini (Error: {str(e)[:50]})"
     
     return text, "None"
