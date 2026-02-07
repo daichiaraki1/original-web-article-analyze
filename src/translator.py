@@ -280,7 +280,21 @@ def translate_batch_gemini(paragraphs: List[dict], source_lang: str, gemini_api_
                 
     except Exception as e:
         error_message = str(e)
-        status_area.warning(f"Gemini: 翻訳中にエラーが発生しました。取得できた部分まで表示します。 ({str(e)[:100]}...)")
+        
+        # Friendly Error Message for Quota Exceeded (429)
+        if "429" in error_message or "quota" in error_message.lower():
+             error_message = (
+                 "⚠️ Gemini APIの利用制限（Quota Exceeded）に達しました。\n"
+                 "Google AI Studioの無料枠（1日あたりのリクエスト数など）を超過した可能性があります。\n"
+                 "\n"
+                 "【回避策】\n"
+                 "1. しばらく時間を置いてから再試行してください（エラー文に retry in XX s とある場合はその時間待機）。\n"
+                 "2. 別のGoogleアカウントで新しいAPIキーを取得して設定し直してください。\n"
+                 "3. Google Cloudの課金設定（Pay-as-you-go）を有効にすると制限が緩和されます。\n"
+                 f"\n(詳細エラー: {str(e)[:100]}...)"
+             )
+        
+        status_area.warning(f"Gemini: 翻訳中にエラーが発生しました。取得できた部分まで表示します。")
 
     # Process whatever text we got (even if empty or partial)
     if not full_response_text and error_message:
@@ -289,7 +303,7 @@ def translate_batch_gemini(paragraphs: List[dict], source_lang: str, gemini_api_
          for i, p in enumerate(paragraphs):
              if i == 0:
                  results.append({
-                     "text": f"⚠️ Gemini Error: {error_message}", 
+                     "text": error_message, 
                      "engine": "Gemini (Error)",
                      "tag": p.get("tag", "p")
                  })
