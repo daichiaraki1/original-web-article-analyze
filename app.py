@@ -388,29 +388,28 @@ def main():
                         # 保存ボタン
                         auth_changed = False
                         if st.button("APIキーを保存", key="save_deepl_key"):
-                            st.session_state["deepl_api_key"] = deepl_key_input
-                            # 保存時はキャッシュクリアして再取得させる
                             if "deepl_usage_cache" in st.session_state:
                                 del st.session_state["deepl_usage_cache"]
                             auth_changed = True
-                
-                # Update: Use separate explicit placeholders to avoid nesting issues
-                message_placeholder = st.empty()
-                usage_placeholder = st.empty()
-                
-                # 1. 保存/クリアのメッセージ表示
-                if auth_changed:
-                    with message_placeholder.container():
-                        if deepl_key_input:
-                            st.success("✅ 保存しました")
-                        else:
-                            st.info("クリアしました")
+                        
+                        # Revert: Show status and usage INSIDE the expander as requested by user
+                        # Use explicit placeholders to try to manage state better
+                        message_placeholder = st.empty()
+                        usage_placeholder = st.empty()
+                        
+                        # 1. 保存/クリアのメッセージ表示
+                        if auth_changed:
+                            with message_placeholder.container():
+                                if deepl_key_input:
+                                    st.success("✅ 保存しました")
+                                else:
+                                    st.info("クリアしました")
 
-                # 2. 自動的に残量を確認・表示（キーがある場合）
-                saved_key = st.session_state.get("deepl_api_key")
-                if saved_key:
-                    # Pass the placeholder directly
-                    render_deepl_usage_ui(saved_key, usage_placeholder)
+                        # 2. 自動的に残量を確認・表示（キーがある場合）
+                        saved_key = st.session_state.get("deepl_api_key")
+                        if saved_key:
+                            # Pass the placeholder directly
+                            render_deepl_usage_ui(saved_key, usage_placeholder)
                 
                 if 'lang_choice_label' not in locals():
                     # Fallback or error handling
@@ -611,11 +610,13 @@ def main():
                                 
                                 // Also target the "API Key Settings" expander title if it persists
                                 if (el.innerText && el.innerText.includes('DeepL APIキー設定') && el.tagName === 'DIV') {
-                                     // Be careful not to hide if we are in Settings view... but we are in ELSE block (Result view).
-                                     // So hiding it is safe.
-                                     // Find the parent streamlit expander container?
-                                     // Actually just hiding the text might leave a box.
-                                     // Let's rely on the broader check.
+                                    // Optional: Hide expander title if needed
+                                }
+
+                                // NEW: Target the "API Key Set" text (Ghost Text)
+                                if (el.innerText && el.innerText.includes('APIキー設定済み') && el.innerText.includes('✓')) {
+                                    el.style.display = 'none';
+                                    console.log("Ghost API Key Text hidden:", el);
                                 }
                             }
                         }
