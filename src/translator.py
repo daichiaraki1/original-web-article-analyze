@@ -146,6 +146,8 @@ def _translate_chunk(text: str, engine_name: str, source_lang: str, deepl_api_ke
                     
             except Exception as e:
                 return text, f"DeepL (NetError: {str(e)[:50]})"
+        except Exception as e:
+            return text, f"DeepL (SetupError: {str(e)})"
     
     elif engine_name == "MyMemory":
         try:
