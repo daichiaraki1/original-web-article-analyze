@@ -2,6 +2,7 @@ from typing import List
 import streamlit as st
 import re
 import requests
+import time
 from deep_translator import GoogleTranslator, MyMemoryTranslator
 
 # Google翻訳の文字数制限（安全マージンを取って4500文字）
@@ -273,6 +274,19 @@ def render_deepl_usage_ui(api_key: str):
     """
     DeepL使用状況を表示するUIコンポーネント
     """
+    if "debug_usage_rendered" not in st.session_state:
+        st.session_state.debug_usage_rendered = 0
+    
+    # Double Render Detection
+    now = time.time()
+    last = st.session_state.get("last_usage_render", 0)
+    if now - last < 1.0:
+        st.toast(f"⚠️ DOUBLE RENDER DETECTED! (Diff: {now - last:.3f}s)")
+        # Optionally show an error on screen
+        st.error(f"Double Render at {now}")
+    
+    st.session_state["last_usage_render"] = now
+
     if not api_key:
         return
 

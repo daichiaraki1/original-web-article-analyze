@@ -394,6 +394,11 @@ def main():
                         if saved_key:
                             render_deepl_usage_ui(saved_key)
                 
+                if 'lang_choice_label' not in locals():
+                    # Fallback or error handling
+                    # This should theoretically not happen if flow is correct, but avoids NameError
+                    lang_choice_label = "自動検出" 
+                
                 source_lang = lang_map[lang_choice_label]
                 
                 st.markdown("<br>", unsafe_allow_html=True)
