@@ -416,12 +416,27 @@ def main():
                             if "deepl_usage_cache" in st.session_state:
                                 del st.session_state["deepl_usage_cache"]
                             
-                            # Set flag to show success message after rerun
                             st.session_state["deepl_key_saved_success"] = True
                             st.rerun()
                     else:
                         # If key is saved and unchanged, show nothing or just text
-                        pass
+                        st.markdown("""
+                            <div style="
+                                margin-top: 8px; 
+                                padding: 8px 12px; 
+                                background-color: #dcfce7; 
+                                color: #166534; 
+                                border-radius: 6px; 
+                                font-size: 0.9em; 
+                                font-weight: 600;
+                                border: 1px solid #bbf7d0;
+                                display: inline-flex;
+                                align-items: center;
+                                gap: 6px;
+                            ">
+                                ✅ APIキーは保存されています
+                            </div>
+                        """, unsafe_allow_html=True)
                     
                     # Revert: Show status and usage INSIDE the expander as requested by user
                     # Use explicit placeholders to try to manage state better
