@@ -366,6 +366,21 @@ def main():
                      # 維持すると再翻訳ボタンが必要。
                      st.rerun()
                 
+import datetime
+import extra_streamlit_components as stx
+
+# Add function to manage cookies
+def get_manager():
+    return stx.CookieManager()
+
+cookie_manager = get_manager()
+
+# Check for cookie-stored API key on load
+cookie_key = cookie_manager.get("deepl_api_key_cookie")
+if cookie_key and not st.session_state.get("deepl_api_key"):
+    st.session_state["deepl_api_key"] = cookie_key
+    # Optional: trigger rerender if needed, but session state update usually suffices for next interaction
+        
             # DeepL APIキー入力（折りたたみ形式）
             with lang_col2.expander("🔑 DeepL APIキー設定（任意）", expanded=False):
                     st.markdown("""
@@ -373,8 +388,8 @@ def main():
                             DeepLのAPIキーをお持ちの場合、入力すると翻訳エンジンに「DeepL」が追加されます。
                         <a href="https://www.deepl.com/pro-api" target="_blank">APIキーを取得</a>
                         <br>
-                        <span style="color: #ef4444; font-size: 0.9em;">
-                            ※保存されたキーは、ブラウザの再読み込みやタブを閉じた際にクリアされます。
+                        <span style="color: #22c55e; font-size: 0.9em;">
+                            ※入力したキーはブラウザに保存され、次回以降も自動的に読み込まれます（30日間有効）。
                         </span>
                     </div>
                     """, unsafe_allow_html=True)
@@ -390,6 +405,11 @@ def main():
                     # 保存ボタン
                     if st.button("APIキーを保存", key="save_deepl_key"):
                         st.session_state["deepl_api_key"] = deepl_key_input
+                        
+                        # Save to cookie for 30 days
+                        expires = datetime.datetime.now() + datetime.timedelta(days=30)
+                        cookie_manager.set("deepl_api_key_cookie", deepl_key_input, expires_at=expires)
+                        
                         # 保存時はキャッシュクリアして再取得させる
                         if "deepl_usage_cache" in st.session_state:
                             del st.session_state["deepl_usage_cache"]
