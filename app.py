@@ -15,7 +15,6 @@ from src.utils import create_images_zip, fetch_image_data_v10, make_diff_html, d
 import extra_streamlit_components as stx
 
 # Add function to manage cookies
-@st.cache_resource
 def get_manager():
     return stx.CookieManager()
 
