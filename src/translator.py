@@ -331,7 +331,7 @@ def translate_batch_gemini(paragraphs: List[dict], source_lang: str, gemini_api_
              if is_title:
                  # Simplified error for title to avoid duplication with body error
                  # Use HTML span that fits inside H3
-                 error_message = "<span style='color: #be123c; font-size: 0.7em; font-weight: normal;'>⚠️ 翻訳失敗 (詳細エラーは本文先頭を参照)</span>"
+                 error_message = f"<span style='color: #be123c; font-size: 0.7em; font-weight: normal;'>⚠️ タイトル翻訳失敗: {str(e)[:50]}...</span>"
              else:
                  error_message = f"""
                  <div style="
