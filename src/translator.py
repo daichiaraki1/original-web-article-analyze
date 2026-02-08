@@ -214,6 +214,21 @@ def _translate_chunk(text: str, engine_name: str, source_lang: str, deepl_api_ke
     return text, "None"
 
 
+def get_available_models(api_key: str):
+    """
+    List available Gemini models for the provided API key.
+    """
+    try:
+        genai.configure(api_key=api_key)
+        models = []
+        for m in genai.list_models():
+            if 'generateContent' in m.supported_generation_methods:
+                models.append(m.name)
+        return models
+    except Exception as e:
+        return [f"Error listing models: {str(e)}"]
+
+
 def translate_batch_gemini(paragraphs: List[dict], source_lang: str, gemini_api_key: str, output_placeholder, status_area, model_name: str = "gemini-3-flash-preview", engine_label: str = "Gemini (Batch)"):
     """
     Translate all paragraphs in a single batch request using line-based format for robustness.
