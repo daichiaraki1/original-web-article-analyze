@@ -559,6 +559,7 @@ def main():
                              st.code("\n".join(st.session_state["gemini_available_models"]))
                              st.info("APIから取得された全モデルリストです。")
                              st.write("---")
+                         st.markdown("""
                             <div style="
                                 margin-top: -15px; 
                                 margin-bottom: 10px;
