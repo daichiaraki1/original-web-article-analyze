@@ -869,7 +869,7 @@ def main():
                 source_lang = lang_map.get(current_lang_label, "auto")
 
                 # Check if comparison data exists
-                t_key_2 = f"t_v9_{src_url}_compare"
+                t_key_2 = f"t_v9_{src_url}_2"
                 trans_data = st.session_state[t_key]
                 trans_data_2 = st.session_state.get(t_key_2, None)
                 
