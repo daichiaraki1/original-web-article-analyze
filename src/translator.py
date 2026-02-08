@@ -314,7 +314,11 @@ def translate_batch_gemini(paragraphs: List[dict], source_lang: str, gemini_api_
         for chunk in response:
             if chunk.text:
                 full_response_text += chunk.text
-                # Optional: Update placeholder incrementally here if needed
+                if output_placeholder:
+                    # Replace separator with visual separator to simulate paragraphs
+                    preview_html = full_response_text.replace("|||", "<div style='margin:12px 0; border-bottom:1px dashed #e2e8f0;'></div>")
+                    # Render accumulating text
+                    output_placeholder.markdown(f"<div style='color:#334155; line-height:1.8; font-size:15px;'>{preview_html}</div>", unsafe_allow_html=True)
                 
     except Exception as e:
         error_message = str(e)
