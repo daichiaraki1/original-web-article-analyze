@@ -9,7 +9,7 @@ import importlib
 if 'src.translator' in sys.modules:
     importlib.reload(sys.modules['src.translator'])
 
-from src.translator import translate_paragraphs, get_deepl_usage, render_deepl_usage_ui, get_available_models
+from src.translator import translate_paragraphs, get_deepl_usage, render_deepl_usage_ui
 from src.utils import create_images_zip, fetch_image_data_v10, make_diff_html, detect_language
 
 import extra_streamlit_components as stx
@@ -520,16 +520,6 @@ def main():
                         st.rerun()
                 else:
                     if st.session_state.get("gemini_api_key"):
-                         # Debug: Check available models
-                         if st.button("利用可能なモデルを確認 (デバッグ用)", key="debug_check_models"):
-                             with st.spinner("モデルリストを取得中..."):
-                                 models = get_available_models(st.session_state["gemini_api_key"])
-                                 st.write("---")
-                                 st.write("### 利用可能なモデル一覧")
-                                 st.code("\n".join(models))
-                                 st.info("これらのモデル名をコピーしてエラー報告等に使用してください。")
-                                 st.write("---")
-
                          st.markdown("""
                             <div style="
                                 margin-top: -15px; 
