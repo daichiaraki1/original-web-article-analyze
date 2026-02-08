@@ -737,6 +737,8 @@ def main():
                         label_visibility="collapsed"
                     )
                     
+                    st.markdown("<div style='margin-bottom: -15px;'></div>", unsafe_allow_html=True)
+                    
                     # エンジンが選択されたら翻訳を実行
                     if selected_engine != "-- 選択してください --":
                         with st.spinner(f"{selected_engine} で翻訳中..."):
@@ -969,6 +971,7 @@ def main():
                         full_trans_1 = f"# {t1_title}\n\n" + "\n\n".join(t1_text_parts)
                         st_copy_to_clipboard(full_trans_1, "📋 コピー", key="copy_trans_1")
                     
+                    st.markdown("<div style='margin-bottom: -15px;'></div>", unsafe_allow_html=True)
                     new_engine_1 = st.selectbox(
                         "翻訳エンジン 1",
                         engines,
@@ -1050,6 +1053,7 @@ def main():
                              full_trans_2 = f"# {t2_title}\n\n" + "\n\n".join(t2_text_parts)
                              st_copy_to_clipboard(full_trans_2, "📋 コピー", key="copy_trans_2")
                         
+                        st.markdown("<div style='margin-bottom: -15px;'></div>", unsafe_allow_html=True)
                         new_engine_2 = st.selectbox(
                             "翻訳エンジン 2",
                             engines,
@@ -1113,6 +1117,7 @@ def main():
                         if st.session_state.get("gemini_api_key"):
                             gemini_label = st.session_state.get("gemini_label_current", "Gemini (gemini-3-flash)")
                             compare_engines.insert(3 if "DeepL" in compare_engines else 2, gemini_label)
+                        st.markdown("<div style='margin-bottom: -15px;'></div>", unsafe_allow_html=True)
                         selected_compare_engine = st.selectbox(
                             "比較エンジン",
                             compare_engines,
