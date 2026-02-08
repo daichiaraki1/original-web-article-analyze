@@ -732,27 +732,22 @@ def main():
                     
                     # エンジンが選択されたら翻訳を実行
                     if selected_engine != "-- 選択してください --":
-                        with st.spinner(f"{selected_engine} で翻訳中..."):
-                            # 翻訳結果を表示するプレースホルダーを作成（ストリーミング表示用）
-                            # ここではまだ結果がないので、後で結果表示エリアとして使われる場所を確保
-                            # しかし、現在の構造では `st.rerun()` しているので、session_state に保存してリロード後に表示する形。
-                            # ユーザー要望: "段落ごとに翻訳されたらその都度少しずつ翻訳結果を先に表示"
-                            # これを実現するには、rerun前にプレビュー表示するか、構造を変える必要がある。
-                            # 現状の `translate_paragraphs` 内で `status_area` などを使っているが、結果のテキスト自体は表示していない。
-                            # `translate_paragraphs` に `output_placeholder` を渡して、そこで追記していく形にする。
-                            
-                            # 一時的な表示エリア
-                            stream_placeholder = st.empty()
-                            
-                            st.session_state[t_key] = translate_paragraphs(
-                                src_article.structured_html_parts,
-                                engine_name=selected_engine,
-                                source_lang=source_lang,
-                                deepl_api_key=st.session_state.get("deepl_api_key"),
-                                gemini_api_key=st.session_state.get("gemini_api_key"),
-                                output_placeholder=stream_placeholder, # Pass placeholder
-                                model_name=st.session_state.get("gemini_model_setting", "gemini-2.5-flash")
-                            )
+                            with st.spinner(f"{selected_engine} で翻訳中..."):
+                                # 翻訳結果を表示するプレースホルダーを作成（ストリーミング表示用）
+                                # ユーザー要望: プログレスバー（進行状況）をテキスト表示エリアの上に配置
+                                progress_placeholder = st.empty()
+                                stream_placeholder = st.empty()
+                                
+                                st.session_state[t_key] = translate_paragraphs(
+                                    src_article.structured_html_parts,
+                                    engine_name=selected_engine,
+                                    source_lang=source_lang,
+                                    deepl_api_key=st.session_state.get("deepl_api_key"),
+                                    gemini_api_key=st.session_state.get("gemini_api_key"),
+                                    output_placeholder=stream_placeholder, # Pass placeholder
+                                    progress_placeholder=progress_placeholder,
+                                    model_name=st.session_state.get("gemini_model_setting", "gemini-2.5-flash")
+                                )
                             st.session_state[f"t_ttl_v9_{src_url}"] = translate_paragraphs(
                                 [{"tag": "h1", "text": src_article.title}],
                                 engine_name=selected_engine,
