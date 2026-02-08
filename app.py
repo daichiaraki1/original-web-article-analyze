@@ -1064,18 +1064,23 @@ def main():
                         if new_engine_2 != prev_engine_2:
                             st.session_state["engine_2_selected"] = new_engine_2
                             with st.spinner(f"{new_engine_2} で比較用再翻訳中..."):
-                                t_key_2 = f"t_v9_{src_url}_compare"
+                                t_key_2 = f"t_v9_{src_url}_2"
+                                stream_placeholder_2 = st.empty()
                                 st.session_state[t_key_2] = translate_paragraphs(
                                     src_article.structured_html_parts,
                                     engine_name=new_engine_2,
                                     source_lang=source_lang,
-                                    deepl_api_key=st.session_state.get("deepl_api_key")
+                                    deepl_api_key=st.session_state.get("deepl_api_key"),
+                                    gemini_api_key=st.session_state.get("gemini_api_key"),
+                                    output_placeholder=stream_placeholder_2,
+                                    model_name=st.session_state.get("gemini_model_setting", "gemini-2.5-flash")
                                 )
-                                st.session_state[f"t_ttl_v9_{src_url}_compare"] = translate_paragraphs(
+                                st.session_state[f"t_ttl_v9_{src_url}_2"] = translate_paragraphs(
                                     [{"tag": "h1", "text": src_article.title}],
                                     engine_name=new_engine_2,
                                     source_lang=source_lang,
-                                    deepl_api_key=st.session_state.get("deepl_api_key")
+                                    deepl_api_key=st.session_state.get("deepl_api_key"),
+                                    gemini_api_key=st.session_state.get("gemini_api_key")
                                 )[0]["text"]
                             st.rerun()
                         # 初期設定
@@ -1111,18 +1116,23 @@ def main():
                         # エンジンが選択されたら比較翻訳を実行
                         if selected_compare_engine != "-- 選択してください --":
                             with st.spinner(f"{selected_compare_engine} で比較翻訳中..."):
-                                t_key_2 = f"t_v9_{src_url}_compare"
+                                t_key_2 = f"t_v9_{src_url}_2"
+                                stream_placeholder_2 = st.empty()
                                 st.session_state[t_key_2] = translate_paragraphs(
                                     src_article.structured_html_parts,
                                     engine_name=selected_compare_engine,
                                     source_lang=source_lang,
-                                    deepl_api_key=st.session_state.get("deepl_api_key")
+                                    deepl_api_key=st.session_state.get("deepl_api_key"),
+                                    gemini_api_key=st.session_state.get("gemini_api_key"),
+                                    output_placeholder=stream_placeholder_2,
+                                    model_name=st.session_state.get("gemini_model_setting", "gemini-2.5-flash")
                                 )
-                                st.session_state[f"t_ttl_v9_{src_url}_compare"] = translate_paragraphs(
+                                st.session_state[f"t_ttl_v9_{src_url}_2"] = translate_paragraphs(
                                     [{"tag": "h1", "text": src_article.title}],
                                     engine_name=selected_compare_engine,
                                     source_lang=source_lang,
-                                    deepl_api_key=st.session_state.get("deepl_api_key")
+                                    deepl_api_key=st.session_state.get("deepl_api_key"),
+                                    gemini_api_key=st.session_state.get("gemini_api_key")
                                 )[0]["text"]
                                 st.session_state["show_comparison_view"] = True
                             st.rerun()
@@ -1207,7 +1217,7 @@ def main():
                 title_orig = src_article.title or ""
                 title_trans = r_title if is_trans else ""
                 # 比較用タイトル翻訳を取得
-                title_trans_2 = st.session_state.get(f"t_ttl_v9_{src_url}_compare", "") if is_compare_mode else ""
+                title_trans_2 = st.session_state.get(f"t_ttl_v9_{src_url}_2", "") if is_compare_mode else ""
                 
                 left_blocks += f"<div class='trans-paragraph-block trans-title-block' id='src-row-title'><h3>{title_orig}</h3><span style='font-size:0.8em; color:#64748b;'>{src_article.publisher or ''}</span></div>"
                 center_blocks += f"<div class='trans-paragraph-block trans-title-block' id='trans1-row-title'><h3>{title_trans}</h3></div>"
