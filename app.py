@@ -689,18 +689,25 @@ def main():
                 hdr_col1, hdr_col2, hdr_col3 = st.columns([5, 5, 2])
                 
                 with hdr_col1:
-                    st.markdown("""
-                    <div style="
-                        background: #f1f5f9;
-                        padding: 12px 16px;
-                        border-radius: 10px 10px 0 0;
-                        font-weight: 700;
-                        color: #475569;
-                        text-transform: uppercase;
-                        font-size: 0.75em;
-                        letter-spacing: 0.5px;
-                    ">原文 (ORIGINAL)</div>
-                    """, unsafe_allow_html=True)
+                    oh_col, ob_col = st.columns([0.7, 0.3])
+                    with oh_col:
+                        st.markdown("""
+                        <div style="
+                            background: #f1f5f9;
+                            padding: 12px 16px;
+                            border-radius: 10px 10px 0 0;
+                            font-weight: 700;
+                            color: #475569;
+                            text-transform: uppercase;
+                            font-size: 0.75em;
+                            letter-spacing: 0.5px;
+                        ">原文 (ORIGINAL)</div>
+                        """, unsafe_allow_html=True)
+                    with ob_col:
+                        # Copy Button for Original (Pre-translation)
+                        if src_article:
+                            full_orig_text = f"# {src_article.title}\n\n" + "\n\n".join([p["text"] for p in src_article.structured_html_parts])
+                            st_copy_to_clipboard(full_orig_text, "📋 コピー", key="copy_orig_pre")
                 
                 with hdr_col2:
                     st.markdown("""
