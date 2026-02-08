@@ -1068,7 +1068,8 @@ def main():
                 header_html = ""
 
                 # --- Gemini Fallback Logic ---
-                fallback_target_model = "gemini-1.5-flash-001"
+                # gemini-1.5-flash returned 404 (likely deprecated in 2026). Using 2.0-flash as fallback.
+                fallback_target_model = "gemini-2.0-flash"
                 
                 # Check Engine 1 for Errors
                 if trans_data and any("Gemini (Error)" in str(item.get("engine", "")) for item in trans_data):
