@@ -552,13 +552,7 @@ def main():
                              help="通常は最新のFlashモデルが推奨されます。"
                          )
                          
-                         # Check Models Button
-                         if st.button("利用可能なモデルを確認", key="debug_check_models"):
-                             st.write("---")
-                             st.write("### 利用可能なモデル一覧")
-                             st.code("\n".join(st.session_state["gemini_available_models"]))
-                             st.info("APIから取得された全モデルリストです。")
-                             st.write("---")
+                         
                          st.markdown("""
                             <div style="
                                 margin-top: -15px; 
