@@ -9,7 +9,7 @@ import importlib
 if 'src.translator' in sys.modules:
     importlib.reload(sys.modules['src.translator'])
 
-from src.translator import translate_paragraphs, get_deepl_usage, render_deepl_usage_ui
+from src.translator import translate_paragraphs, get_deepl_usage, render_deepl_usage_ui, get_available_models
 from src.utils import create_images_zip, fetch_image_data_v10, make_diff_html, detect_language
 
 import extra_streamlit_components as stx
@@ -520,7 +520,45 @@ def main():
                         st.rerun()
                 else:
                     if st.session_state.get("gemini_api_key"):
-                         st.markdown("""
+                         # Fetch available models if not already in session state or explicitly requested
+                         if "gemini_available_models" not in st.session_state:
+                             try:
+                                 with st.spinner("Geminiモデルリストを取得中..."):
+                                    models = get_available_models(st.session_state["gemini_api_key"])
+                                    # Filter for only gemini models
+                                    gemini_models = [m.replace("models/", "") for m in models if "gemini" in m]
+                                    # Sort: prioritized specific order (flash > pro, newer > older)
+                                    # Simple heuristic: sort by length desc (usually more specific version) then alpha
+                                    # But better to just sort alpha desc to get highest numbers first?
+                                    # Actually, user wants "latest".
+                                    gemini_models.sort(reverse=True) 
+                                    st.session_state["gemini_available_models"] = gemini_models
+                             except:
+                                 st.session_state["gemini_available_models"] = ["gemini-2.5-flash", "gemini-1.5-pro"]
+
+                         # Model Selection Dropdown
+                         available_models = st.session_state.get("gemini_available_models", ["gemini-2.5-flash"])
+                         default_ix = 0
+                         # Try to find a good default if not set
+                         target_default = "gemini-2.5-flash"
+                         if target_default in available_models:
+                             default_ix = available_models.index(target_default)
+                         
+                         selected_model = st.selectbox(
+                             "使用するGeminiモデル", 
+                             available_models, 
+                             index=default_ix,
+                             key="gemini_model_setting",
+                             help="通常は最新のFlashモデルが推奨されます。"
+                         )
+                         
+                         # Debug Button (Restored)
+                         if st.button("利用可能なモデルを確認 (デバッグ用)", key="debug_check_models"):
+                             st.write("---")
+                             st.write("### 利用可能なモデル一覧")
+                             st.code("\n".join(st.session_state["gemini_available_models"]))
+                             st.info("APIから取得された全モデルリストです。")
+                             st.write("---")
                             <div style="
                                 margin-top: -15px; 
                                 margin-bottom: 10px;
@@ -716,7 +754,8 @@ def main():
                                 source_lang=source_lang,
                                 deepl_api_key=st.session_state.get("deepl_api_key"),
                                 gemini_api_key=st.session_state.get("gemini_api_key"),
-                                output_placeholder=stream_placeholder # Pass placeholder
+                                output_placeholder=stream_placeholder, # Pass placeholder
+                                model_name=st.session_state.get("gemini_model_setting", "gemini-2.5-flash")
                             )
                             st.session_state[f"t_ttl_v9_{src_url}"] = translate_paragraphs(
                                 [{"tag": "h1", "text": src_article.title}],
@@ -942,7 +981,9 @@ def main():
                                 src_article.structured_html_parts,
                                 engine_name=new_engine_1,
                                 source_lang=source_lang,
-                                deepl_api_key=st.session_state.get("deepl_api_key")
+                                deepl_api_key=st.session_state.get("deepl_api_key"),
+                                gemini_api_key=st.session_state.get("gemini_api_key"),
+                                model_name=st.session_state.get("gemini_model_setting", "gemini-2.5-flash")
                             )
                             st.session_state[f"t_ttl_v9_{src_url}"] = translate_paragraphs(
                                 [{"tag": "h1", "text": src_article.title}],

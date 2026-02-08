@@ -455,7 +455,7 @@ def translate_batch_gemini(paragraphs: List[dict], source_lang: str, gemini_api_
     return results
 
 
-def translate_paragraphs(paragraphs: List[dict], engine_name="Google", source_lang="auto", deepl_api_key: str = None, gemini_api_key: str = None, output_placeholder=None):
+def translate_paragraphs(paragraphs: List[dict], engine_name="Google", source_lang="auto", deepl_api_key: str = None, gemini_api_key: str = None, output_placeholder=None, model_name=None):
     """
     段落ごとに翻訳する（長い段落は自動分割）
     output_placeholder: Streamlit placeholder to render results incrementally
@@ -478,25 +478,29 @@ def translate_paragraphs(paragraphs: List[dict], engine_name="Google", source_la
     # Gemini Optimization: Batch Translation
     # If engine is Gemini, we use a single request (or few chunks) to avoid Rate Limits (15 RPM / 20 RPD)
     if "Gemini" in engine_name:
-        # Extract model name
-        model_name = "gemini-3-flash-preview" # Default
+        # Determine model name
+        gemini_model_name = model_name  # Start with argument if provided
         
-        # 1. Parse "Gemini:model" format
+        # 1. Parse "Gemini:model" format (overrides argument if present)
         if ":" in engine_name:
-            model_name = engine_name.split(":", 1)[1]
+            gemini_model_name = engine_name.split(":", 1)[1]
         
-        # 2. Parse "Gemini (model)" format
+        # 2. Parse "Gemini (model)" format (overrides argument if present)
         match = re.search(r"Gemini \((.*?)\)", engine_name)
         if match:
             captured = match.group(1)
             # Map aliases
             if captured == "gemini-3-flash":
-                model_name = "gemini-3-flash-preview"
-            else:
-                model_name = captured
+                gemini_model_name = "gemini-3-flash-preview"
+            elif captured != "Batch": # Ignore "Batch" label
+                gemini_model_name = captured
+
+        # Fallback to default if no valid model name was determined
+        if not gemini_model_name:
+             gemini_model_name = "gemini-2.5-flash" # Use 2.5 flash as safe default per user feedback
 
         # Exception handling is done inside translate_batch_gemini
-        return translate_batch_gemini(paragraphs, source_lang, gemini_api_key, output_placeholder, status_area, model_name=model_name, engine_label=engine_name)
+        return translate_batch_gemini(paragraphs, source_lang, gemini_api_key, output_placeholder, status_area, model_name=gemini_model_name, engine_label=f"Gemini ({gemini_model_name})")
 
     # ... (Original loop for other engines)
     
