@@ -732,22 +732,22 @@ def main():
                     
                     # エンジンが選択されたら翻訳を実行
                     if selected_engine != "-- 選択してください --":
-                            with st.spinner(f"{selected_engine} で翻訳中..."):
-                                # 翻訳結果を表示するプレースホルダーを作成（ストリーミング表示用）
-                                # ユーザー要望: プログレスバー（進行状況）をテキスト表示エリアの上に配置
-                                progress_placeholder = st.empty()
-                                stream_placeholder = st.empty()
-                                
-                                st.session_state[t_key] = translate_paragraphs(
-                                    src_article.structured_html_parts,
-                                    engine_name=selected_engine,
-                                    source_lang=source_lang,
-                                    deepl_api_key=st.session_state.get("deepl_api_key"),
-                                    gemini_api_key=st.session_state.get("gemini_api_key"),
-                                    output_placeholder=stream_placeholder, # Pass placeholder
-                                    progress_placeholder=progress_placeholder,
-                                    model_name=st.session_state.get("gemini_model_setting", "gemini-2.5-flash")
-                                )
+                        with st.spinner(f"{selected_engine} で翻訳中..."):
+                            # 翻訳結果を表示するプレースホルダーを作成（ストリーミング表示用）
+                            # ユーザー要望: プログレスバー（進行状況）をテキスト表示エリアの上に配置
+                            progress_placeholder = st.empty()
+                            stream_placeholder = st.empty()
+                            
+                            st.session_state[t_key] = translate_paragraphs(
+                                src_article.structured_html_parts,
+                                engine_name=selected_engine,
+                                source_lang=source_lang,
+                                deepl_api_key=st.session_state.get("deepl_api_key"),
+                                gemini_api_key=st.session_state.get("gemini_api_key"),
+                                output_placeholder=stream_placeholder, # Pass placeholder
+                                progress_placeholder=progress_placeholder,
+                                model_name=st.session_state.get("gemini_model_setting", "gemini-2.5-flash")
+                            )
                             st.session_state[f"t_ttl_v9_{src_url}"] = translate_paragraphs(
                                 [{"tag": "h1", "text": src_article.title}],
                                 engine_name=selected_engine,
