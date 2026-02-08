@@ -229,7 +229,7 @@ def get_available_models(api_key: str):
         return [f"Error listing models: {str(e)}"]
 
 
-def translate_batch_gemini(paragraphs: List[dict], source_lang: str, gemini_api_key: str, output_placeholder, status_area, model_name: str = "gemini-3-flash-preview", engine_label: str = "Gemini (Batch)"):
+def translate_batch_gemini(paragraphs: List[dict], source_lang: str, gemini_api_key: str, output_placeholder, status_area, model_name: str = "gemini-3-flash-preview", engine_label: str = "Gemini (Batch)", progress_placeholder=None):
     """
     Translate all paragraphs in a single batch request using line-based format for robustness.
     """
@@ -272,7 +272,11 @@ def translate_batch_gemini(paragraphs: List[dict], source_lang: str, gemini_api_
     {combined_text}
     """
 
-    status_area.info(f"Gemini (Batch Mode) で一括翻訳中... ({len(texts)} 段落)")
+    
+    if progress_placeholder:
+         progress_placeholder.info(f"{engine_label} 一括翻訳中... ({len(texts)} 段落)")
+    else:
+         status_area.info(f"{engine_label} 一括翻訳中... ({len(texts)} 段落)")
     if output_placeholder:
         output_placeholder.markdown(
             """
@@ -455,7 +459,7 @@ def translate_batch_gemini(paragraphs: List[dict], source_lang: str, gemini_api_
     return results
 
 
-def translate_paragraphs(paragraphs: List[dict], engine_name="Google", source_lang="auto", deepl_api_key: str = None, gemini_api_key: str = None, output_placeholder=None, model_name=None):
+def translate_paragraphs(paragraphs: List[dict], engine_name="Google", source_lang="auto", deepl_api_key: str = None, gemini_api_key: str = None, output_placeholder=None, model_name=None, progress_placeholder=None):
     """
     段落ごとに翻訳する（長い段落は自動分割）
     output_placeholder: Streamlit placeholder to render results incrementally
@@ -472,7 +476,7 @@ def translate_paragraphs(paragraphs: List[dict], engine_name="Google", source_la
     # Instead, we can render a simple list or markdown of what's done so far.
     # A better approach for "pre-view" is just printing the text.
     
-    progress_placeholder = st.empty()
+    progress_placeholder = progress_placeholder if progress_placeholder else st.empty()
     status_area = st.empty()
     
     # Gemini Optimization: Batch Translation
@@ -500,7 +504,7 @@ def translate_paragraphs(paragraphs: List[dict], engine_name="Google", source_la
              gemini_model_name = "gemini-2.5-flash" # Use 2.5 flash as safe default per user feedback
 
         # Exception handling is done inside translate_batch_gemini
-        return translate_batch_gemini(paragraphs, source_lang, gemini_api_key, output_placeholder, status_area, model_name=gemini_model_name, engine_label=f"Gemini ({gemini_model_name})")
+        return translate_batch_gemini(paragraphs, source_lang, gemini_api_key, output_placeholder, status_area, model_name=gemini_model_name, engine_label=f"Gemini ({gemini_model_name})", progress_placeholder=progress_placeholder)
 
     # ... (Original loop for other engines)
     

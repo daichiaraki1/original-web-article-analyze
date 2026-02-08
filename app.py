@@ -989,12 +989,16 @@ def main():
                     if new_engine_1 != prev_engine_1:
                         st.session_state["engine_1_selected"] = new_engine_1
                         with st.spinner(f"{new_engine_1} で再翻訳中..."):
+                            progress_placeholder_1 = st.empty()
+                            stream_placeholder_1 = st.empty()
                             st.session_state[t_key] = translate_paragraphs(
                                 src_article.structured_html_parts,
                                 engine_name=new_engine_1,
                                 source_lang=source_lang,
                                 deepl_api_key=st.session_state.get("deepl_api_key"),
                                 gemini_api_key=st.session_state.get("gemini_api_key"),
+                                output_placeholder=stream_placeholder_1,
+                                progress_placeholder=progress_placeholder_1,
                                 model_name=st.session_state.get("gemini_model_setting", "gemini-2.5-flash")
                             )
                             st.session_state[f"t_ttl_v9_{src_url}"] = translate_paragraphs(
@@ -1065,6 +1069,7 @@ def main():
                             st.session_state["engine_2_selected"] = new_engine_2
                             with st.spinner(f"{new_engine_2} で比較用再翻訳中..."):
                                 t_key_2 = f"t_v9_{src_url}_2"
+                                progress_placeholder_2 = st.empty()
                                 stream_placeholder_2 = st.empty()
                                 st.session_state[t_key_2] = translate_paragraphs(
                                     src_article.structured_html_parts,
@@ -1073,6 +1078,7 @@ def main():
                                     deepl_api_key=st.session_state.get("deepl_api_key"),
                                     gemini_api_key=st.session_state.get("gemini_api_key"),
                                     output_placeholder=stream_placeholder_2,
+                                    progress_placeholder=progress_placeholder_2,
                                     model_name=st.session_state.get("gemini_model_setting", "gemini-2.5-flash")
                                 )
                                 st.session_state[f"t_ttl_v9_{src_url}_2"] = translate_paragraphs(
@@ -1117,6 +1123,7 @@ def main():
                         if selected_compare_engine != "-- 選択してください --":
                             with st.spinner(f"{selected_compare_engine} で比較翻訳中..."):
                                 t_key_2 = f"t_v9_{src_url}_2"
+                                progress_placeholder_2 = st.empty()
                                 stream_placeholder_2 = st.empty()
                                 st.session_state[t_key_2] = translate_paragraphs(
                                     src_article.structured_html_parts,
@@ -1125,6 +1132,7 @@ def main():
                                     deepl_api_key=st.session_state.get("deepl_api_key"),
                                     gemini_api_key=st.session_state.get("gemini_api_key"),
                                     output_placeholder=stream_placeholder_2,
+                                    progress_placeholder=progress_placeholder_2,
                                     model_name=st.session_state.get("gemini_model_setting", "gemini-2.5-flash")
                                 )
                                 st.session_state[f"t_ttl_v9_{src_url}_2"] = translate_paragraphs(
