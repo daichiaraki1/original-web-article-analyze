@@ -10,6 +10,7 @@ if 'src.translator' in sys.modules:
     importlib.reload(sys.modules['src.translator'])
 
 from src.translator import translate_paragraphs, get_deepl_usage, render_deepl_usage_ui, get_available_models
+from st_copy_to_clipboard import st_copy_to_clipboard
 from src.utils import create_images_zip, fetch_image_data_v10, make_diff_html, detect_language
 
 import extra_streamlit_components as stx
@@ -907,18 +908,24 @@ def main():
                     hdr_col1, hdr_col2, hdr_col3 = st.columns([5, 5, 2])
                 
                 with hdr_col1:
-                    st.markdown("""
-                    <div style="
-                        background: #f1f5f9;
-                        padding: 12px 16px;
-                        border-radius: 10px 10px 0 0;
-                        font-weight: 700;
-                        color: #475569;
-                        text-transform: uppercase;
-                        font-size: 0.75em;
-                        letter-spacing: 0.5px;
-                    ">原文 (ORIGINAL)</div>
-                    """, unsafe_allow_html=True)
+                    oh_col, ob_col = st.columns([0.75, 0.25])
+                    with oh_col:
+                        st.markdown("""
+                        <div style="
+                            background: #f1f5f9;
+                            padding: 12px 16px;
+                            border-radius: 10px 10px 0 0;
+                            font-weight: 700;
+                            color: #475569;
+                            text-transform: uppercase;
+                            font-size: 0.75em;
+                            letter-spacing: 0.5px;
+                        ">原文 (ORIGINAL)</div>
+                        """, unsafe_allow_html=True)
+                    with ob_col:
+                        # Copy Button for Original
+                        full_orig_text = f"# {src_article.title}\n\n" + "\n\n".join([p["text"] for p in src_article.structured_html_parts])
+                        st_copy_to_clipboard(full_orig_text, "📋 コピー", key="copy_orig")
                 
                 with hdr_col2:
                     # Engine 1 Selector
@@ -937,18 +944,28 @@ def main():
                     elif "Gemini" in engine_1:
                          display_engine_1 = st.session_state.get("gemini_label_current", "Gemini (gemini-3-flash)")
                     
+                    
                     current_engine_1_idx = engines.index(display_engine_1) if display_engine_1 in engines else 0
                     
-                    st.markdown("""
-                    <div style="
-                        background: #f1f5f9;
-                        padding: 8px 16px;
-                        border-radius: 10px 10px 0 0;
-                        font-weight: 700;
-                        color: #475569;
-                        font-size: 0.75em;
-                    ">翻訳 1</div>
-                    """, unsafe_allow_html=True)
+                    oh1_col, ob1_col = st.columns([0.75, 0.25])
+                    with oh1_col:
+                        st.markdown("""
+                        <div style="
+                            background: #f1f5f9;
+                            padding: 8px 16px;
+                            border-radius: 10px 10px 0 0;
+                            font-weight: 700;
+                            color: #475569;
+                            font-size: 0.75em;
+                        ">翻訳 1</div>
+                        """, unsafe_allow_html=True)
+                    with ob1_col:
+                        # Copy Button for Translation 1
+                        trans_data_1 = st.session_state.get(t_key, [])
+                        t1_text_parts = [p.get("text", "") for p in trans_data_1]
+                        t1_title = st.session_state.get(f"t_ttl_v9_{src_url}", "")
+                        full_trans_1 = f"# {t1_title}\n\n" + "\n\n".join(t1_text_parts)
+                        st_copy_to_clipboard(full_trans_1, "📋 コピー", key="copy_trans_1")
                     
                     new_engine_1 = st.selectbox(
                         "翻訳エンジン 1",
@@ -1006,16 +1023,26 @@ def main():
                             
                         current_engine_2_idx = engines.index(display_engine_2) if display_engine_2 in engines else 1
                         
-                        st.markdown("""
-                        <div style="
-                            background: #f1f5f9;
-                            padding: 8px 16px;
-                            border-radius: 10px 10px 0 0;
-                            font-weight: 700;
-                            color: #475569;
-                            font-size: 0.75em;
-                        ">翻訳 2 (比較)</div>
-                        """, unsafe_allow_html=True)
+                        oh2_col, ob2_col = st.columns([0.75, 0.25])
+                        with oh2_col:
+                            st.markdown("""
+                            <div style="
+                                background: #f1f5f9;
+                                padding: 8px 16px;
+                                border-radius: 10px 10px 0 0;
+                                font-weight: 700;
+                                color: #475569;
+                                font-size: 0.75em;
+                            ">翻訳 2 (比較)</div>
+                            """, unsafe_allow_html=True)
+                        with ob2_col:
+                             # Copy Button for Translation 2
+                             t_key_2 = f"t_v9_{src_url}_2"
+                             trans_data_2 = st.session_state.get(t_key_2, [])
+                             t2_text_parts = [p.get("text", "") for p in trans_data_2]
+                             t2_title = st.session_state.get(f"t_ttl_v9_{src_url}_2", "")
+                             full_trans_2 = f"# {t2_title}\n\n" + "\n\n".join(t2_text_parts)
+                             st_copy_to_clipboard(full_trans_2, "📋 コピー", key="copy_trans_2")
                         
                         new_engine_2 = st.selectbox(
                             "翻訳エンジン 2",
