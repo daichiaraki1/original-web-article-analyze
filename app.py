@@ -1078,8 +1078,8 @@ def main():
                 header_html = ""
 
                 # --- Gemini Fallback Logic ---
-                # Fallback to gemini-1.5-pro as it's the current stable standard.
-                fallback_target_model = "gemini-1.5-pro"
+                # Fallback to gemini-2.5-flash which is available and likely stable.
+                fallback_target_model = "gemini-2.5-flash"
                 
                 # Check Engine 1 for Errors
                 if trans_data and any("Gemini (Error)" in str(item.get("engine", "")) for item in trans_data):
