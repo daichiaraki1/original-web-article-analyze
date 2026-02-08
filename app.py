@@ -552,8 +552,8 @@ def main():
                              help="通常は最新のFlashモデルが推奨されます。"
                          )
                          
-                         # Debug Button (Restored)
-                         if st.button("利用可能なモデルを確認 (デバッグ用)", key="debug_check_models"):
+                         # Check Models Button
+                         if st.button("利用可能なモデルを確認", key="debug_check_models"):
                              st.write("---")
                              st.write("### 利用可能なモデル一覧")
                              st.code("\n".join(st.session_state["gemini_available_models"]))
