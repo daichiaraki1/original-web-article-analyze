@@ -23,7 +23,7 @@ def get_manager():
 
 # --- メイン UI ---
 def main():
-    st.set_page_config(layout="wide", page_title="中国メディア解析ツール")
+    st.set_page_config(layout="wide", page_title="メディア解析ツール")
 
     # Initialize Cookie Manager AFTER page config
     # Use a fixed key to ensure component stability across reruns
@@ -269,7 +269,7 @@ def main():
     </style>
     """, unsafe_allow_html=True)
 
-    st.title("中国メディア記事 解析＆比較ツール")
+    st.title("メディア記事 解析＆比較ツール")
 
 
     # --- Reset Button ---
@@ -443,24 +443,25 @@ def main():
                             st.rerun()
                     else:
                         # If key is saved and unchanged, show nothing or just text
-                        st.markdown("""
-                            <div style="
-                                margin-top: -15px; 
-                                margin-bottom: 25px;
-                                padding: 8px 12px; 
-                                background-color: #dcfce7; 
-                                color: #166534; 
-                                border-radius: 6px; 
-                                font-size: 0.9em; 
-                                font-weight: 600;
-                                border: 1px solid #bbf7d0;
-                                display: inline-flex;
-                                align-items: center;
-                                gap: 6px;
-                            ">
-                                ✅ APIキーは保存されています
-                            </div>
-                        """, unsafe_allow_html=True)
+                        if current_saved_key:
+                            st.markdown("""
+                                <div style="
+                                    margin-top: -15px; 
+                                    margin-bottom: 25px;
+                                    padding: 8px 12px; 
+                                    background-color: #dcfce7; 
+                                    color: #166534; 
+                                    border-radius: 6px; 
+                                    font-size: 0.9em; 
+                                    font-weight: 600;
+                                    border: 1px solid #bbf7d0;
+                                    display: inline-flex;
+                                    align-items: center;
+                                    gap: 6px;
+                                ">
+                                    ✅ APIキーは保存されています
+                                </div>
+                            """, unsafe_allow_html=True)
                     
                     # Revert: Show status and usage INSIDE the expander as requested by user
                     # Use explicit placeholders to try to manage state better
@@ -741,29 +742,17 @@ def main():
                     
                     # エンジンが選択されたら翻訳を実行
                     if selected_engine != "-- 選択してください --":
-                        with st.spinner(f"{selected_engine} で翻訳中..."):
-                            # 翻訳結果を表示するプレースホルダーを作成（ストリーミング表示用）
-                            # ユーザー要望: プログレスバー（進行状況）をテキスト表示エリアの上に配置
-                            progress_placeholder = st.empty()
-                            stream_placeholder = st.empty()
+                        if not src_article.structured_html_parts:
+                            st.error("本文が抽出されていないため、翻訳を実行できません。")
+                        else:
+                            # Defer translation execution to after grid rendering
+                            st.session_state["run_translation_1"] = True
+                            st.session_state["pending_engine_1"] = selected_engine
+                            st.session_state["pending_model_1"] = st.session_state.get("gemini_model_setting", "gemini-2.5-flash")
                             
-                            st.session_state[t_key] = translate_paragraphs(
-                                src_article.structured_html_parts,
-                                engine_name=selected_engine,
-                                source_lang=source_lang,
-                                deepl_api_key=st.session_state.get("deepl_api_key"),
-                                gemini_api_key=st.session_state.get("gemini_api_key"),
-                                output_placeholder=stream_placeholder, # Pass placeholder
-                                progress_placeholder=progress_placeholder,
-                                model_name=st.session_state.get("gemini_model_setting", "gemini-2.5-flash")
-                            )
-                            st.session_state[f"t_ttl_v9_{src_url}"] = translate_paragraphs(
-                                [{"tag": "h1", "text": src_article.title}],
-                                engine_name=selected_engine,
-                                source_lang=source_lang,
-                                deepl_api_key=st.session_state.get("deepl_api_key"),
-                                gemini_api_key=st.session_state.get("gemini_api_key")
-                            )[0]["text"]
+                            # Note: Title translation is also deferred/handled at the end now to assume consistent state
+                            # But we need to ensure the title key is set if we want it to persist?
+                            # The deferred block handles it.
                             
                             if "Gemini" in selected_engine:
                                 # Load current
@@ -781,17 +770,11 @@ def main():
                                 new_count = current_count + 1
                                 new_cookie = {"date": today_str, "count": new_count}
                                 
-                                # Check if already updated in this run (to avoid double count on rerun)
-                                # Actually st.rerun() restarts script, so we should save to cookie immediately.
-                                # But Streamlit rerun might cause loop if we are not careful.
-                                # Cookie manager set causes rerun? Yes usually.
-                                # But we area bout to rerun anyway.
-                                
-                                # Set cookie (expires in 2 days is enough for daily counter)
+                                # Set cookie
                                 expires = datetime.datetime.now() + datetime.timedelta(days=2)
                                 cookie_manager.set("gemini_usage_cookie", new_cookie, expires_at=expires)
-                                
-                        st.rerun()
+                        
+                        # REMOVED st.rerun() to allow script to proceed to deferred execution block
                 
                 with hdr_col3:
                     st.markdown("""
@@ -993,29 +976,89 @@ def main():
                     prev_engine_1 = st.session_state.get("engine_1_selected", engine_1)
                     if new_engine_1 != prev_engine_1:
                         st.session_state["engine_1_selected"] = new_engine_1
-                        with st.spinner(f"{new_engine_1} で再翻訳中..."):
-                            progress_placeholder_1 = st.empty()
-                            stream_placeholder_1 = st.empty()
-                            st.session_state[t_key] = translate_paragraphs(
-                                src_article.structured_html_parts,
-                                engine_name=new_engine_1,
-                                source_lang=source_lang,
-                                deepl_api_key=st.session_state.get("deepl_api_key"),
-                                gemini_api_key=st.session_state.get("gemini_api_key"),
-                                output_placeholder=stream_placeholder_1,
-                                progress_placeholder=progress_placeholder_1,
-                                model_name=st.session_state.get("gemini_model_setting", "gemini-2.5-flash")
-                            )
-                            st.session_state[f"t_ttl_v9_{src_url}"] = translate_paragraphs(
-                                [{"tag": "h1", "text": src_article.title}],
-                                engine_name=new_engine_1,
-                                source_lang=source_lang,
-                                deepl_api_key=st.session_state.get("deepl_api_key")
-                            )[0]["text"]
+                        # Defer translation execution
+                        st.session_state["run_translation_1"] = True
+                        st.session_state["pending_engine_1"] = new_engine_1
+                        st.session_state["pending_model_1"] = st.session_state.get("gemini_model_setting", "gemini-2.5-flash")
                         st.rerun()
                     # 初期設定
                     if "engine_1_selected" not in st.session_state:
                         st.session_state["engine_1_selected"] = engine_1
+                
+                # --- 4. Post-Render Translation Execution (Deferred) ---
+                
+                # Translation 1 (Main)
+                if st.session_state.get("run_translation_1"):
+                    pending_engine = st.session_state.get("pending_engine_1")
+                    pending_model = st.session_state.get("pending_model_1")
+                    
+                    # Remove flags immediately to prevent re-run loop
+                    st.session_state["run_translation_1"] = False
+                    
+                    with st.spinner(f"{pending_engine} で翻訳中..."):
+                        # Use collected placeholders for streaming
+                        # Pass t1_placeholders to the translation function
+                        
+                        # Execute translation
+                        # Note: We need to update session_state[t_key] with the FINAL result
+                        # The function returns the list of dicts.
+                        
+                        # Progress placeholder (optional, maybe at the top?)
+                        # We can't put it at the top easily now.
+                        # For now, just use spinner.
+                        
+                        t_key = f"t_v9_{src_url}"
+                        st.session_state[t_key] = translate_paragraphs(
+                            src_article.structured_html_parts,
+                            engine_name=pending_engine,
+                            source_lang=source_lang,
+                            deepl_api_key=st.session_state.get("deepl_api_key"),
+                            gemini_api_key=st.session_state.get("gemini_api_key"),
+                            output_placeholder=t1_placeholders, # Streaming target
+                            progress_placeholder=None, # No single progress bar
+                            model_name=pending_model
+                        )
+                        
+                        # Title translation (non-streaming usually)
+                        st.session_state[f"t_ttl_v9_{src_url}"] = translate_paragraphs(
+                            [{"tag": "h1", "text": src_article.title}],
+                            engine_name=pending_engine,
+                            source_lang=source_lang,
+                            deepl_api_key=st.session_state.get("deepl_api_key"),
+                            gemini_api_key=st.session_state.get("gemini_api_key")
+                        )[0]["text"]
+                        
+                    st.rerun()
+
+                # Translation 2 (Compare)
+                if st.session_state.get("run_translation_2"):
+                    pending_engine = st.session_state.get("pending_engine_2")
+                    pending_model = st.session_state.get("pending_model_2")
+                    
+                    st.session_state["run_translation_2"] = False
+                    
+                    with st.spinner(f"{pending_engine} で比較翻訳中..."):
+                        t_key_2 = f"t_v9_{src_url}_2"
+                        st.session_state[t_key_2] = translate_paragraphs(
+                            src_article.structured_html_parts,
+                            engine_name=pending_engine,
+                            source_lang=source_lang,
+                            deepl_api_key=st.session_state.get("deepl_api_key"),
+                            gemini_api_key=st.session_state.get("gemini_api_key"),
+                            output_placeholder=t2_placeholders, # Streaming target
+                            progress_placeholder=None,
+                            model_name=pending_model
+                        )
+                        
+                        st.session_state[f"t_ttl_v9_{src_url}_2"] = translate_paragraphs(
+                            [{"tag": "h1", "text": src_article.title}],
+                            engine_name=pending_engine,
+                            source_lang=source_lang,
+                            deepl_api_key=st.session_state.get("deepl_api_key"),
+                            gemini_api_key=st.session_state.get("gemini_api_key")
+                        )[0]["text"]
+                        
+                    st.rerun()
                 
                 if is_compare_mode:
                     with hdr_col3:
@@ -1072,29 +1115,15 @@ def main():
                         # 保存されている前回のエンジンと比較
                         prev_engine_2 = st.session_state.get("engine_2_selected", engine_2)
                         if new_engine_2 != prev_engine_2:
-                            st.session_state["engine_2_selected"] = new_engine_2
-                            with st.spinner(f"{new_engine_2} で比較用再翻訳中..."):
-                                t_key_2 = f"t_v9_{src_url}_2"
-                                progress_placeholder_2 = st.empty()
-                                stream_placeholder_2 = st.empty()
-                                st.session_state[t_key_2] = translate_paragraphs(
-                                    src_article.structured_html_parts,
-                                    engine_name=new_engine_2,
-                                    source_lang=source_lang,
-                                    deepl_api_key=st.session_state.get("deepl_api_key"),
-                                    gemini_api_key=st.session_state.get("gemini_api_key"),
-                                    output_placeholder=stream_placeholder_2,
-                                    progress_placeholder=progress_placeholder_2,
-                                    model_name=st.session_state.get("gemini_model_setting", "gemini-2.5-flash")
-                                )
-                                st.session_state[f"t_ttl_v9_{src_url}_2"] = translate_paragraphs(
-                                    [{"tag": "h1", "text": src_article.title}],
-                                    engine_name=new_engine_2,
-                                    source_lang=source_lang,
-                                    deepl_api_key=st.session_state.get("deepl_api_key"),
-                                    gemini_api_key=st.session_state.get("gemini_api_key")
-                                )[0]["text"]
-                            st.rerun()
+                            if not src_article.structured_html_parts:
+                                st.error("本文が抽出されていないため、翻訳を実行できません。")
+                            else:
+                                st.session_state["engine_2_selected"] = new_engine_2
+                                # Defer translation execution
+                                st.session_state["run_translation_2"] = True
+                                st.session_state["pending_engine_2"] = new_engine_2
+                                st.session_state["pending_model_2"] = st.session_state.get("gemini_model_setting", "gemini-2.5-flash")
+                                # REMOVED st.rerun()
                         # 初期設定
                         if "engine_2_selected" not in st.session_state:
                             st.session_state["engine_2_selected"] = engine_2
@@ -1128,29 +1157,15 @@ def main():
                         
                         # エンジンが選択されたら比較翻訳を実行
                         if selected_compare_engine != "-- 選択してください --":
-                            with st.spinner(f"{selected_compare_engine} で比較翻訳中..."):
-                                t_key_2 = f"t_v9_{src_url}_2"
-                                progress_placeholder_2 = st.empty()
-                                stream_placeholder_2 = st.empty()
-                                st.session_state[t_key_2] = translate_paragraphs(
-                                    src_article.structured_html_parts,
-                                    engine_name=selected_compare_engine,
-                                    source_lang=source_lang,
-                                    deepl_api_key=st.session_state.get("deepl_api_key"),
-                                    gemini_api_key=st.session_state.get("gemini_api_key"),
-                                    output_placeholder=stream_placeholder_2,
-                                    progress_placeholder=progress_placeholder_2,
-                                    model_name=st.session_state.get("gemini_model_setting", "gemini-2.5-flash")
-                                )
-                                st.session_state[f"t_ttl_v9_{src_url}_2"] = translate_paragraphs(
-                                    [{"tag": "h1", "text": src_article.title}],
-                                    engine_name=selected_compare_engine,
-                                    source_lang=source_lang,
-                                    deepl_api_key=st.session_state.get("deepl_api_key"),
-                                    gemini_api_key=st.session_state.get("gemini_api_key")
-                                )[0]["text"]
+                            if not src_article.structured_html_parts:
+                                st.error("本文が抽出されていないため、翻訳を実行できません。")
+                            else:
+                                # Defer translation execution
+                                st.session_state["run_translation_2"] = True
+                                st.session_state["pending_engine_2"] = selected_compare_engine
+                                st.session_state["pending_model_2"] = st.session_state.get("gemini_model_setting", "gemini-2.5-flash")
                                 st.session_state["show_comparison_view"] = True
-                            st.rerun()
+                                # REMOVED st.rerun()
                 
                 # Empty header_html since we're using Streamlit components above
                 header_html = ""
@@ -1228,209 +1243,23 @@ def main():
                 len_t2 = len(trans_data_2) if trans_data_2 else 0
                 max_len = max(len_src, len_t1, len_t2)
                 
-                # --- Title Row (Prepend before body) ---
-                title_orig = src_article.title or ""
-                title_trans = r_title if is_trans else ""
-                # 比較用タイトル翻訳を取得
-                title_trans_2 = st.session_state.get(f"t_ttl_v9_{src_url}_2", "") if is_compare_mode else ""
+                # --- 3. Native Streamlit Layout (Grid Loop) ---
+                # To support real-time streaming into individual paragraphs, we use st.columns in a loop.
                 
-                left_blocks += f"<div class='trans-paragraph-block trans-title-block' id='src-row-title'><h3>{title_orig}</h3><span style='font-size:0.8em; color:#64748b;'>{src_article.publisher or ''}</span></div>"
-                center_blocks += f"<div class='trans-paragraph-block trans-title-block' id='trans1-row-title'><h3>{title_trans}</h3></div>"
+                # Title Row
+                # ----------------
+                # Comparison mode layout or standard layout
                 if is_compare_mode:
-                    right_blocks += f"<div class='trans-paragraph-block trans-title-block' id='trans2-row-title'><h3>{title_trans_2}</h3></div>"
-            
-                for i in range(max_len):
-                    row_id = f"row-{i}"
-                    
-                    # 1. Left (Source)
-                    if i < len_src:
-                        p = src_article.structured_html_parts[i]
-                        l_content = f"<{p['tag']}>{p['text']}</{p['tag']}>"
-                    else:
-                        l_content = ""
-                    
-                    left_blocks += f"<div class='trans-paragraph-block' id='src-{row_id}'>{l_content}</div>"
-
-                    # 2. Center (Trans 1 or Compare Article)
-                    if i < len_t1:
-                        p = trans_data[i]
-                        t_tag = p.get('tag', 'p')
-                        t_text = p.get('text', '')
-                        c_content = f"<{t_tag}>{t_text}</{t_tag}>"
-                    else:
-                        c_content = ""
-                    center_blocks += f"<div class='trans-paragraph-block' id='trans1-{row_id}'>{c_content}</div>"
-
-                    # 3. Right (Trans 2)
-                    if is_compare_mode:
-                        if i < len_t2:
-                            p = trans_data_2[i]
-                            t_tag = p.get('tag', 'p')
-                            t_text = p.get('text', '')
-                            r_content = f"<{t_tag}>{t_text}</{t_tag}>"
-                        else:
-                            r_content = ""
-                        right_blocks += f"<div class='trans-paragraph-block' id='trans2-{row_id}'>{r_content}</div>"
-
-                # --- CSS Injection for Columns ---
-                # 比較モードでは三等分、そうでなければ3列目は狭い
-                grid_cols = "1fr 1fr 1fr" if is_compare_mode else "5fr 5fr 2fr"
-                extra_css = f"""
-                <style>
-                    .trans-grid-container {{ grid-template-columns: {grid_cols} !important; }}
-                </style>
-                """
-
-                # 3. HTML Layout
-                html_content = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        {extra_css}
-        <style>
-            * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-            html, body {{ height: 100%; overflow: hidden; }}
-            body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }}
-        
-            .trans-unified-container {{
-                height: 100%;
-                display: flex;
-                flex-direction: column;
-                border: 1px solid #e2e8f0;
-                border-radius: 12px;
-                overflow: hidden;
-                background: #fff;
-            }}
-        
-            .trans-unified-header {{
-                display: flex;
-                background: #f1f5f9;
-                border-bottom: 1px solid #e2e8f0;
-                flex-shrink: 0;
-            }}
-        
-            .trans-header-cell {{
-                flex: 1;
-                padding: 14px 24px;
-                font-weight: 800;
-                color: #475569;
-                text-transform: uppercase;
-                text-align: center;
-                border-right: 1px solid #e2e8f0;
-                white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-            }}
-            .trans-header-cell:last-child {{ border-right: none; }}
-        
-            .trans-scroll-pane-wrapper {{
-                flex: 1;
-                overflow-y: auto;
-                background: white;
-            }}
-        
-            .trans-grid-container {{
-                display: grid;
-                /* grid-template-columns set via extra_css */
-                min-height: 100%;
-            }}
-        
-            .trans-column-wrapper {{
-                border-right: 1px solid #f1f5f9;
-            }}
-            .trans-column-wrapper:last-child {{ border-right: none; }}
-        
-            .trans-paragraph-block {{
-                padding: 24px 32px;
-                line-height: 1.8;
-                border-bottom: 1px solid #f1f5f9;
-                font-size: 15px; color: #334155;
-            }}
-        </style>
-    </head>
-    
-    <body>
-        <div class="trans-unified-container unified-container">
-            {header_html}
-            
-            <div class="trans-scroll-pane-wrapper">
-                <div class="trans-grid-container">
-                    <div class="trans-column-wrapper">
-                        {left_blocks}
-                    </div>
-                    <div class="trans-column-wrapper">
-                        {center_blocks}
-                    </div>
-                    {f'<div class="trans-column-wrapper">{right_blocks}</div>' if is_compare_mode else '<div class="trans-column-wrapper" style="background:#f8fafc; display:flex; align-items:center; justify-content:center; color:#cbd5e1; font-size:0.8em;"><div style="text-align:center; padding:20px;"><div style="font-size:2em; margin-bottom:10px;">➕</div><div>上のセレクターで<br>比較翻訳を追加</div></div></div>'}
+                    cols = st.columns(3)
+                else:
+                    cols = st.columns([5, 5, 2])
+                
+                # Title Styling
+                title_style = """
+                <div style="padding: 24px 32px; border-bottom: 2px solid #e2e8f0; margin-bottom: 10px; background: #fff;">
+                    <h3 style="margin: 0; color: #1e293b; font-size: 1.4em;">{title}</h3>
+                    {publisher_html}
                 </div>
-            </div>
-        </div>
-        <script>
-            (function() {{
-                const syncRowHeights = () => {{
-                    // 全ての src-row- で始まるIDを持つ要素を取得
-                    const srcRows = document.querySelectorAll('[id^="src-row-"]');
-                    if (srcRows.length === 0) {{
-                        console.log('No src rows found');
-                        return;
-                    }}
-                    console.log('Found ' + srcRows.length + ' src rows');
-
-                    srcRows.forEach(srcEl => {{
-                        const idStr = srcEl.id;
-                        // src-row-X から X を取り出す (X は title, 0, 1, 2, ...)
-                        const idx = idStr.substring(8); // 'src-row-' is 8 chars
-                        const elSrc = document.getElementById('src-row-' + idx);
-                        const elT1 = document.getElementById('trans1-row-' + idx);
-                        const elT2 = document.getElementById('trans2-row-' + idx);
-                        const elements = [elSrc, elT1, elT2].filter(el => el);
-                        
-                        // まず高さをリセット
-                        elements.forEach(el => el.style.minHeight = 'auto');
-                        
-                        // 最大高さを計算
-                        let maxHeight = 0;
-                        elements.forEach(el => {{
-                            const h = el.getBoundingClientRect().height;
-                            if (h > maxHeight) maxHeight = h;
-                        }});
-                        
-                        // 最大高さを適用
-                        if (maxHeight > 0) {{
-                            elements.forEach(el => el.style.minHeight = maxHeight + 'px');
-                        }}
-                    }});
-                }};
-
-                // Dynamic Height Sensing from Parent
-                const adjustToViewport = () => {{
-                    try {{
-                        // Streamlit Cloudではクロスオリジン制限があるため、失敗した場合は100vhに頼る
-                        const availableHeight = window.parent.innerHeight - 250;
-                        if (availableHeight > 200) {{
-                            document.querySelector('.unified-container').style.height = availableHeight + 'px';
-                        }}
-                    }} catch (e) {{
-                        // フォールバック: 特殊なCSSを使わず、親側のCSSインジェクションに任せる
-                        document.querySelector('.unified-container').style.height = 'calc(100vh - 20px)';
-                    }}
-                }};
-
-                const cols = document.querySelectorAll('.trans-column-wrapper');
-                let isSyncing = false;
-                cols.forEach(col => {{
-                    col.addEventListener('scroll', function() {{
-                        if (isSyncing) return;
-                        isSyncing = true;
-                        const scrollTop = this.scrollTop;
-                        cols.forEach(c => {{
-                            if (c !== this) c.scrollTop = scrollTop;
-                        }});
-                        setTimeout(() => {{ isSyncing = false; }}, 50);
-                    }});
-                }});
-
-                window.addEventListener('resize', () => {{
-                    syncRowHeights();
                     adjustToViewport();
                 }});
                 

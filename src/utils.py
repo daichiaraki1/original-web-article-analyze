@@ -10,7 +10,6 @@ from PIL import Image
 from typing import Optional
 
 @st.cache_data(show_spinner=False)
-@st.cache_data(show_spinner=False)
 def fetch_image_data_v10(img_url: str, referer_url: str) -> tuple[Optional[str], str, str]:
     try:
         if referer_url.startswith("https://mp.weixin.qq.com"):

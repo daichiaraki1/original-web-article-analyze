@@ -311,14 +311,50 @@ def translate_batch_gemini(paragraphs: List[dict], source_lang: str, gemini_api_
         )
         
         # Stream response
+        if output_placeholder:
+             # Ensure it's a list for compatibility with verify
+             placeholders = output_placeholder if isinstance(output_placeholder, list) else [output_placeholder]
+        else:
+             placeholders = []
+
+        # Stream response
+        accumulated_buffer = ""
+        current_paragraph_index = 0
+        
         for chunk in response:
             if chunk.text:
                 full_response_text += chunk.text
-                if output_placeholder:
-                    # Replace separator with visual separator to simulate paragraphs
-                    preview_html = full_response_text.replace("|||", "<div style='margin:12px 0; border-bottom:1px dashed #e2e8f0;'></div>")
-                    # Render accumulating text
-                    output_placeholder.markdown(f"<div style='color:#334155; line-height:1.8; font-size:15px;'>{preview_html}</div>", unsafe_allow_html=True)
+                accumulated_buffer += chunk.text
+                
+                # Check for separators in the buffer
+                while "|||" in accumulated_buffer:
+                    # Found a complete paragraph
+                    split_idx = accumulated_buffer.find("|||")
+                    paragraph_text = accumulated_buffer[:split_idx].strip()
+                    accumulated_buffer = accumulated_buffer[split_idx + 3:]
+                    
+                    # Update current placeholder with FINAL text
+                    if current_paragraph_index < len(placeholders):
+                        ph = placeholders[current_paragraph_index]
+                         # Format nicely
+                        formatted_text = f"<div style='color:#334155; line-height:1.8; font-size:15px; animation: fadeIn 0.5s;'>{paragraph_text}</div>"
+                        # Extra CSS for fade-in
+                        ph.markdown(f"""
+                        <style>@keyframes fadeIn {{ from {{ opacity:0; }} to {{ opacity:1; }} }}</style>
+                        {formatted_text}
+                        """, unsafe_allow_html=True)
+                    
+                    current_paragraph_index += 1
+                
+                # Update the CURRENT (incomplete) paragraph with streaming text
+                if current_paragraph_index < len(placeholders):
+                    ph = placeholders[current_paragraph_index]
+                    # Show accumulating text for current paragraph
+                    # To avoid jitter, we might want to only update periodically or clean it?
+                    # Streamlit handles markdown updates reasonably well.
+                    preview_text = accumulated_buffer.strip()
+                    if preview_text:
+                         ph.markdown(f"<div style='color:#334155; line-height:1.8; font-size:15px; opacity: 0.7;'>{preview_text}▌</div>", unsafe_allow_html=True)
                 
     except Exception as e:
         error_message = str(e)
