@@ -16,8 +16,6 @@ from src.utils import create_images_zip, fetch_image_data_v10, make_diff_html, d
 import extra_streamlit_components as stx
 import base64
 import os
-
-# --- Modern Pictogram Icons (Base64 encoded SVGs for reliability) ---
 ICON_CIRCLE_CHECK_OUTLINE = "data:image/svg+xml;base64," + base64.b64encode(b"""
 <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='#94a3b8' stroke-width='1.5'>
   <circle cx='12' cy='12' r='10'/>
@@ -35,8 +33,15 @@ ICON_CIRCLE_CHECK_SOLID = "data:image/svg+xml;base64," + base64.b64encode(b"""
 ICON_DOWNLOAD_TRAY = "data:image/svg+xml;base64," + base64.b64encode(b"""
 <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='#64748b' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'>
   <path d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'/>
-  <polyline points='7 10 12 15 17 10'/>
-  <line x1='12' y1='15' x2='12' y2='3'/>
+  <polyline points='7 10 12 15 17 10' />
+  <line x1='12' y1='15' x2='12' y2='3' />
+</svg>
+""").decode()
+
+ICON_COPY_SVG = "data:image/svg+xml;base64," + base64.b64encode(b"""
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='#64748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>
+  <rect x='9' y='9' width='13' height='13' rx='2' ry='2'></rect>
+  <path d='M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1'></path>
 </svg>
 """).decode()
 
@@ -57,15 +62,8 @@ def render_copy_header(title, text_to_copy, key_suffix=""):
     # Escape special characters for JS string literal
     safe_text = text_to_copy.replace("\\", "\\\\").replace("`", "\\`").replace("$", "\\$").replace("\n", "\\n").replace("\r", "\\r")
     
-    # Determine icon markup (Custom vs Default)
-    # If custom icon exists, do not render default SVG to avoid "double icon" look.
-    if copy_icon_b64:
-        icon_markup = f'<img src="data:image/png;base64,{copy_icon_b64}" id="custom-icon-{key_suffix}" style="width: 18px; height: 18px; object-fit: contain;">'
-    else:
-        icon_markup = f'''<svg id="copy-icon-{key_suffix}" style="width: 18px; height: 18px; color: #64748b;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-            </svg>'''
+    # Determine icon markup (Always use SVG for transparency and quality)
+    icon_markup = f'<img src="{ICON_COPY_SVG}" id="custom-icon-{key_suffix}" style="width: 18px; height: 18px; object-fit: contain; vertical-align: middle;">'
 
     html_code = f"""
     <div style="
@@ -84,8 +82,8 @@ def render_copy_header(title, text_to_copy, key_suffix=""):
             display: flex;
             align-items: center;
             justify-content: center;
-            background: transparent;
-            border: 1px solid transparent;
+            background: transparent !important;
+            border: 1px solid transparent !important;
             border-radius: 6px;
             width: 32px;
             height: 32px;
@@ -96,7 +94,7 @@ def render_copy_header(title, text_to_copy, key_suffix=""):
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-top: -4px; /* Move it up even more */
+            margin-top: -10px; /* Aligned with 0.75rem header text */
         " title="コピー">
             {icon_markup}
             <span id="copy-check-{key_suffix}" style="display: none; color: #22c55e; font-size: 18px; font-weight: bold;">✓</span>
@@ -236,10 +234,71 @@ def main():
             color: #3b82f6 !important;
             background-color: #eff6ff !important;
         }}
+        /* -----------------------------------------------------------------
+           7. Image Tab Modern Buttons (Icon Only - Leaf Column Targeting)
+           ----------------------------------------------------------------- */
+        /* Target ONLY the leaf columns (no nested columns) that contain our markers */
+        
+        /* Select Button */
+        .stApp div[data-testid="stColumn"]:has(.img-btn-col-select):not(:has(div[data-testid="stColumn"])) button {{
+            background-color: transparent !important;
+            background-image: url("{ICON_CIRCLE_CHECK_OUTLINE}") !important;
+            background-repeat: no-repeat !important;
+            background-position: center !important;
+            background-size: 26px !important;
+            border: none !important;
+            width: 32px !important;
+            height: 32px !important;
+            min-width: 32px !important;
+            min-height: 32px !important;
+            padding: 0 !important;
+            box-shadow: none !important;
+            margin-top: -16px !important; /* Even higher */
+        }}
+        
+        /* Selected State */
+        .stApp div[data-testid="stColumn"]:has(.img-btn-col-select.selected):not(:has(div[data-testid="stColumn"])) button {{
+            background-image: url("{ICON_CIRCLE_CHECK_SOLID}") !important;
+        }}
+        
+        /* Save Button */
+        .stApp div[data-testid="stColumn"]:has(.img-btn-col-save):not(:has(div[data-testid="stColumn"])) button {{
+            background-color: transparent !important;
+            background-image: url("{ICON_DOWNLOAD_TRAY}") !important;
+            background-repeat: no-repeat !important;
+            background-position: center !important;
+            background-size: 24px !important;
+            border: none !important;
+            width: 32px !important;
+            height: 32px !important;
+            min-width: 32px !important;
+            min-height: 32px !important;
+            padding: 0 !important;
+            box-shadow: none !important;
+            margin-top: -16px !important; /* Even higher */
+            margin-left: -18px !important; /* Even closer to Select icon */
+        }}
+        
+        /* Hide all internal text/elements for these specific buttons */
+        .stApp div[data-testid="stColumn"]:has(.img-btn-col-select):not(:has(div[data-testid="stColumn"])) button *,
+        .stApp div[data-testid="stColumn"]:has(.img-btn-col-save):not(:has(div[data-testid="stColumn"])) button * {{
+            display: none !important;
+        }}
+        
+        .stApp div[data-testid="stColumn"]:has(.img-btn-col-select):not(:has(div[data-testid="stColumn"])) button:hover,
+        .stApp div[data-testid="stColumn"]:has(.img-btn-col-save):not(:has(div[data-testid="stColumn"])) button:hover {{
+            background-color: rgba(0,0,0,0.05) !important;
+            border-radius: 4px !important;
+        }}
+        
+        /* Dim icon for saved state */
+        .stApp div[data-testid="stColumn"]:has(.img-btn-col-save.saved):not(:has(div[data-testid="stColumn"])) button {{
+            opacity: 0.4 !important;
+        }}
+        /* ----------------------------------------------------------------- */
+        /* ----------------------------------------------------------------- */
 
         /* 4. Obsolete Copy Button Style Removed (Using render_copy_header instead) */
-        
-        .stButton > button:hover,
         
         /* 選択ボタン (チェックボックス風) - 未選択状態 */
         .stButton > button[kind="secondary"]:has(> div > p:first-child) {{
@@ -258,8 +317,9 @@ def main():
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07) !important;
         }}
         
-        /* 選択ボタン (チェックボックス風) - 選択状態 */
-        .stButton > button[kind="primary"] {{
+        /* 選択ボタン (チェックボックス風) - 選択状態 / ダウンロードボタン (Primary) */
+        .stButton > button[kind="primary"],
+        [data-testid="stDownloadButton"] > button[kind="primary"] {{
             background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
             border: 2px solid #2563eb !important;
             color: #ffffff !important;
@@ -267,11 +327,22 @@ def main():
             font-weight: 600 !important;
             box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35) !important;
         }}
-        .stButton > button[kind="primary"]:hover {{
+        .stButton > button[kind="primary"]:hover,
+        [data-testid="stDownloadButton"] > button[kind="primary"]:hover {{
             background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
             border-color: #1d4ed8 !important;
             transform: translateY(-1px);
             box-shadow: 0 6px 16px rgba(59, 130, 246, 0.45) !important;
+        }}
+        .stButton > button[kind="primary"]:disabled,
+        [data-testid="stDownloadButton"] > button[kind="primary"]:disabled {{
+            background: #e2e8f0 !important;
+            border-color: #cbd5e1 !important;
+            color: #94a3b8 !important;
+            cursor: not-allowed !important;
+            box-shadow: none !important;
+            transform: none !important;
+            opacity: 0.8 !important;
         }}
 
         /* セレクトボックス (ドロップダウン) のスタイル - 目立たせる */
@@ -348,60 +419,6 @@ def main():
         }}
         .trans-scroll-pane-wrapper::-webkit-scrollbar {{ width: 6px; }}
 
-        /* -----------------------------------------------------------------
-           7. Image Tab Modern Buttons (Icon Only)
-           ----------------------------------------------------------------- */
-        
-        /* Select Button (Circle / Check) - Targeting via parent container */
-        div[data-testid="stElementContainer"]:has(.img-btn-select) button {{
-            background-color: transparent !important;
-            border: none !important;
-            padding: 0 !important;
-            width: 32px !important;
-            height: 32px !important;
-            min-height: 32px !important;
-            background-image: url("{ICON_CIRCLE_CHECK_OUTLINE}") !important;
-            background-repeat: no-repeat !important;
-            background-position: center !important;
-            background-size: 26px !important;
-            box-shadow: none !important;
-            transition: transform 0.1s !important;
-        }}
-        div[data-testid="stElementContainer"]:has(.img-btn-select) button p {{
-            display: none !important;
-        }}
-        div[data-testid="stElementContainer"]:has(.img-btn-select) button:hover {{
-            background-color: rgba(0,0,0,0.03) !important;
-            border-radius: 50% !important;
-        }}
-        
-        /* Selected State */
-        div[data-testid="stElementContainer"]:has(.img-btn-select.selected) button {{
-            background-image: url("{ICON_CIRCLE_CHECK_SOLID}") !important;
-        }}
-
-        /* Save Button (Download Arrow) */
-        div[data-testid="stElementContainer"]:has(.img-btn-save) button {{
-            background-color: transparent !important;
-            border: none !important;
-            padding: 0 !important;
-            width: 32px !important;
-            height: 32px !important;
-            min-height: 32px !important;
-            background-image: url("{ICON_DOWNLOAD_TRAY}") !important;
-            background-repeat: no-repeat !important;
-            background-position: center !important;
-            background-size: 24px !important;
-            box-shadow: none !important;
-            transition: transform 0.1s !important;
-        }}
-        div[data-testid="stElementContainer"]:has(.img-btn-save) button p {{
-            display: none !important;
-        }}
-        div[data-testid="stElementContainer"]:has(.img-btn-save) button:hover {{
-            background-color: rgba(0,0,0,0.03) !important;
-            border-radius: 4px !important;
-        }}
         .trans-scroll-pane-wrapper::-webkit-scrollbar-thumb {{ background-color: #cbd5e1; border-radius: 3px; }}
         .trans-scroll-pane-wrapper::-webkit-scrollbar-track {{ background: transparent; }}
 
@@ -1768,7 +1785,7 @@ def main():
                 
                 with col_sep:
                     # 区切り線的なスペース
-                    st.markdown("<div style='border-left: 2px solid #e2e8f0; height: 32px; margin: 0 auto;'></div>", unsafe_allow_html=True)
+                    st.markdown("<div style='border-left: 2px solid #e2e8f0; height: 38px; margin: 0 auto;'></div>", unsafe_allow_html=True)
                 
                 with col3:
                     # 選択状態をウィジェットの状態から直接再計算
@@ -1799,7 +1816,8 @@ def main():
                                     file_name=f"image_{single_idx + 1}.{ext}",
                                     mime=f"image/{img_fmt_single.lower() if img_fmt_single else 'jpeg'}",
                                     key="dl_btn_single_v9",
-                                    use_container_width=True
+                                    use_container_width=True,
+                                    type="primary"
                                 )
                             except:
                                 st.button("ダウンロード (1枚)", disabled=True, use_container_width=True)
@@ -1815,18 +1833,24 @@ def main():
                                 file_name="images.zip",
                                 mime="application/zip",
                                 key="dl_btn_v9",
-                                use_container_width=True
+                                use_container_width=True,
+                                type="primary"
                             )
                     else:
                         st.markdown("""
                         <div style="
-                            padding: 8px 16px;
+                            padding: 0.5rem 1rem;
+                            min-height: 38px;
                             border: 1px dashed #94a3b8;
                             border-radius: 8px;
                             background-color: #ffffff;
                             color: #64748b;
-                            text-align: center;
-                            font-size: 0.85em;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            font-size: 0.9em;
+                            font-weight: 600;
+                            box-sizing: border-box;
                         ">
                             画像を選択してください
                         </div>
@@ -1852,15 +1876,13 @@ def main():
                                 img_b64, img_dims, img_fmt = fetch_image_data_v10(img_url, base_url)
                                 
                                 # 3. Header Row: Select Button | Save Button | Dims/Format
-                                h_c1, h_c2, h_c3 = st.columns([2.5, 2.5, 5])
+                                h_c1, h_c2, h_c3 = st.columns([1.2, 1.2, 7.6])
                                 
                                 with h_c1:
-                                    # Styled Checkbox Toggle Button (Modern Icon)
-                                    select_class = "img-btn-select selected" if is_selected else "img-btn-select"
+                                    # Marker for Select column
+                                    marker_class = "img-btn-col-select selected" if is_selected else "img-btn-col-select"
+                                    st.markdown(f'<div class="{marker_class}" style="display:none"></div>', unsafe_allow_html=True)
                                     
-                                    # Use st.markdown to wrap button
-                                    st.markdown(f'<div class="{select_class}">', unsafe_allow_html=True)
-                                    # Use Zero Width Space as label to hide text but keep clickable area
                                     if st.button("\u200b", key=f"btn_card_{abs_idx}", help="選択/解除"):
                                         if is_selected:
                                             st.session_state.sel_imgs.discard(abs_idx)
@@ -1871,7 +1893,6 @@ def main():
                                             st.session_state[f"img_chk_v9_{abs_idx}"] = True
                                             st.session_state[f"chk_v9_{abs_idx}"] = True
                                         st.rerun()
-                                    st.markdown('</div>', unsafe_allow_html=True)
 
                                 with h_c2:
                                     # Save (Download) Button - Individual Download
@@ -1880,23 +1901,9 @@ def main():
                                     
                                     if is_saved:
                                         # Already saved - show completed state (same height as button)
-                                        st.markdown("""
-                                        <div style="
-                                            padding: 8px 12px;
-                                            min-height: 38px;
-                                            background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
-                                            border: 2px solid #86efac;
-                                            border-radius: 10px;
-                                            text-align: center;
-                                            color: #16a34a;
-                                            font-weight: 600;
-                                            font-size: 0.9em;
-                                            display: flex;
-                                            align-items: center;
-                                            justify-content: center;
-                                            box-sizing: border-box;
-                                        ">✓ 保存済</div>
-                                        """, unsafe_allow_html=True)
+                                        # Already saved - show as icon marker (will be dimmed by CSS)
+                                        st.markdown('<div class="img-btn-col-save saved" style="display:none"></div>', unsafe_allow_html=True)
+                                        st.button("\u200b", key=f"saved_btn_{abs_idx}", disabled=True, help="保存済み")
                                     elif img_b64:
                                         # Not saved yet - show download button
                                         # Simplified: use global base64
@@ -1911,7 +1918,8 @@ def main():
                                             def mark_saved(key):
                                                 st.session_state[key] = True
                                             
-                                            st.markdown('<div class="img-btn-save">', unsafe_allow_html=True)
+                                            # Marker for Save column
+                                            st.markdown('<div class="img-btn-col-save" style="display:none"></div>', unsafe_allow_html=True)
                                             st.download_button(
                                                 label="\u200b",
                                                 data=img_bytes,
@@ -1922,7 +1930,6 @@ def main():
                                                 on_click=mark_saved,
                                                 args=(saved_key,)
                                             )
-                                            st.markdown('</div>', unsafe_allow_html=True)
                                         except:
                                             st.button("保存", key=f"dl_err_{abs_idx}", disabled=True, use_container_width=True)
                                     else:
