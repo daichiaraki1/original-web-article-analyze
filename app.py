@@ -701,6 +701,7 @@ def main():
                         render_deepl_usage_ui(saved_key, usage_placeholder)
             
             # Gemini APIキー設定（折りたたみ形式）
+            gemini_status_placeholder = None
             with lang_col3.expander("🧠 Gemini APIキー設定", expanded=False):
                 st.markdown("""
                     <div style="font-size: 0.85em; color: #64748b; margin-bottom: 10px;">
@@ -839,41 +840,42 @@ def main():
                 usage_percent = min(current_count / limit, 1.0) * 100
                 
                 # Render usage inside the SAME placeholder container to group them
-                with gemini_status_placeholder.container():
-                    st.markdown(f"""
-                    <div style="margin-top: 10px; margin-bottom: 5px; font-weight: bold; font-size: 0.9em; color: #475569;">
-                        本日使用回数 (推定): {current_count} 回
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    # Custom Progress Bar (Same style as DeepL)
-                    bar_html = f"""
-                    <div style="
-                        background-color: #f1f5f9;
-                        width: 100%;
-                        height: 8px;
-                        border-radius: 4px;
-                        margin-top: 5px;
-                        overflow: hidden;
-                        margin-bottom: 10px;
-                    ">
+                if gemini_status_placeholder: # Ensure placeholder exists before using it
+                    with gemini_status_placeholder.container():
+                        st.markdown(f"""
+                        <div style="margin-top: 10px; margin-bottom: 5px; font-weight: bold; font-size: 0.9em; color: #475569;">
+                            本日使用回数 (推定): {current_count} 回
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        # Custom Progress Bar (Same style as DeepL)
+                        bar_html = f"""
                         <div style="
-                            background-color: #3b82f6;
-                            width: {usage_percent}%;
-                            height: 100%;
+                            background-color: #f1f5f9;
+                            width: 100%;
+                            height: 8px;
                             border-radius: 4px;
-                            transition: width 0.5s ease;
-                        "></div>
-                    </div>
-                    """
-                    st.markdown(bar_html, unsafe_allow_html=True)
-                    
-                    st.markdown("""
-                    <div style="font-size: 0.8em; color: #94a3b8; margin-bottom: 10px;">
-                        ※ Gemini APIは正確な使用量を取得できないため、このアプリ内での実行回数をカウントしています。<br>
-                        ※ 無料枠の上限は非公開ですが、1日50回程度が目安と言われています。
-                    </div>
-                    """, unsafe_allow_html=True)
+                            margin-top: 5px;
+                            overflow: hidden;
+                            margin-bottom: 10px;
+                        ">
+                            <div style="
+                                background-color: #3b82f6;
+                                width: {usage_percent}%;
+                                height: 100%;
+                                border-radius: 4px;
+                                transition: width 0.5s ease;
+                            "></div>
+                        </div>
+                        """
+                        st.markdown(bar_html, unsafe_allow_html=True)
+                        
+                        st.markdown("""
+                        <div style="font-size: 0.8em; color: #94a3b8; margin-bottom: 10px;">
+                            ※ Gemini APIは正確な使用量を取得できないため、このアプリ内での実行回数をカウントしています。<br>
+                            ※ 無料枠の上限は非公開ですが、1日50回程度が目安と言われています。
+                        </div>
+                        """, unsafe_allow_html=True)
 
                 if st.session_state.get("gemini_key_saved_success", False):
                      st.success("✅ Geminiキーを保存しました")
