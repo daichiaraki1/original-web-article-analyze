@@ -390,55 +390,63 @@ def translate_batch_gemini(paragraphs: List[dict], source_lang: str, gemini_api_
                     <div style="display: flex; align-items: start; gap: 10px;">
                         <div style="font-size: 1.5em;">⚠️</div>
                         <div>
-                            <div style="font-weight: bold; font-size: 1.1em; margin-bottom: 5px;">Gemini API 利用制限 (Quota Exceeded)</div>
-                            <div style="font-size: 0.9em; line-height: 1.6;">
-                                Google AI Studioの無料枠（1日あたりのリクエスト数など）を超過した可能性があります。
-                            </div>
-                            <div style="
-                                background-color: #ffffff;
-                                border: 1px solid #fecdd3;
-                                border-radius: 6px;
-                                padding: 10px;
-                                margin-top: 10px;
-                                font-size: 0.9em;
-                                color: #881337;
-                            ">
-                                <strong>【回避策】</strong>
-                                <ol style="margin: 5px 0 0 20px; padding: 0;">
-                                    <li>{wait_time_msg}</li>
-                                    <li>別のGoogleアカウントで新しいAPIキーを取得して設定し直してください。</li>
-                                    <li>Google Cloudの課金設定（Pay-as-you-go）を有効にすると制限が緩和されます。</li>
-                                </ol>
-                            </div>
-                            <div style="margin-top: 10px; font-size: 0.8em; color: #9f1239; opacity: 0.8; word-break: break-all;">
-                                詳細エラー: {str(e)}
-                            </div>
+                             <div style="font-weight: bold; font-size: 1.1em; margin-bottom: 5px;">Gemini 利用制限 (Quota)</div>
+                             <div style="font-size: 0.9em; line-height: 1.6;">
+                                 APIの利用制限に達しました。{wait_time_msg}
+                             </div>
+                             <div style="
+                                 background-color: #ffffff;
+                                 border: 1px solid #fecdd3;
+                                 border-radius: 6px;
+                                 padding: 10px;
+                                 margin-top: 10px;
+                                 font-size: 0.85em;
+                                 color: #881337;
+                             ">
+                                 <strong>【対処法】</strong>
+                                 <ul style="margin: 5px 0 0 18px; padding: 0;">
+                                     <li>別のGoogleアカウントのAPIキーを使用する</li>
+                                     <li>Google Cloudの有料プラン(Pay-as-you-go)を有効にする</li>
+                                 </ul>
+                             </div>
+                            <details style="margin-top: 10px; font-size: 0.8em; color: #9f1239; opacity: 0.8; cursor: pointer;">
+                                <summary style="margin-bottom: 5px;">詳細エラーを表示</summary>
+                                <div style="word-break: break-all; padding: 10px; background: rgba(255,255,255,0.5); border-radius: 4px;">
+                                    {str(e)}
+                                </div>
+                            </details>
                         </div>
                     </div>
                  </div>
                  """
         
-        # Suppress duplicate status area error if we are returning it as text
-        # status_area.warning(..., ) -> Removed
-
-    # Process whatever text we got (even if empty or partial)
-    if not full_response_text and error_message:
-         # Failed completely at start. Return error as text for the first block so it persists.
-         results = []
-         for i, p in enumerate(paragraphs):
-             if i == 0:
-                 results.append({
-                     "text": error_message, 
-                     "engine": "Gemini (Error)",
-                     "tag": "div" # Changed tag to div to allow HTML rendering without p wrap issues if any
-                 })
-             else:
-                 results.append({
-                     "text": "...", 
-                     "engine": "Gemini (Error)",
-                     "tag": "p"
-                 })
-         return results
+        # Store full HTML error in session state for banner display
+        st.session_state["v9_error_banner_html"] = error_message
+        
+        # Return a clean message for the result column
+        column_error = f"""
+        <div style="color: #be123c; font-weight: 500; font-size: 0.9em; padding: 10px; border: 1px dashed #fda4af; border-radius: 6px; background: #fff1f2;">
+           ⚠️ 翻訳エラー (詳細は上部の警告を確認してください)
+        </div>
+        """
+        
+        if not full_response_text:
+            # Failed completely at start. Return error as text for the first block so it persists.
+            results = []
+            for i, p in enumerate(paragraphs):
+                if i == 0:
+                    results.append({
+                        "text": column_error, 
+                        "engine": "Gemini (Error)",
+                        "tag": "div"
+                    })
+                else:
+                    results.append({
+                        "text": "...", 
+                        "engine": "Gemini (Error)",
+                        "tag": "p"
+                    })
+            return results
 
     # Split by separator
     translated_texts = full_response_text.split("|||")
@@ -499,10 +507,11 @@ def translate_batch_gemini(paragraphs: List[dict], source_lang: str, gemini_api_
     return results
 
 
-def translate_paragraphs(paragraphs: List[dict], engine_name="Google", source_lang="auto", deepl_api_key: str = None, gemini_api_key: str = None, output_placeholder=None, model_name=None, progress_placeholder=None):
+def translate_paragraphs(paragraphs: List[dict], engine_name="Google", source_lang="auto", deepl_api_key: str = None, gemini_api_key: str = None, output_placeholder=None, model_name=None, progress_placeholder=None, item_id_prefix=None, status_placeholder=None):
     """
     段落ごとに翻訳する（長い段落は自動分割）
     output_placeholder: Streamlit placeholder to render results incrementally
+    status_placeholder: Streamlit placeholder to render status messages (moved to top)
     """
     translated_data = []
     total = len(paragraphs)
@@ -517,7 +526,7 @@ def translate_paragraphs(paragraphs: List[dict], engine_name="Google", source_la
     # A better approach for "pre-view" is just printing the text.
     
     progress_placeholder = progress_placeholder if progress_placeholder else st.empty()
-    status_area = st.empty()
+    status_area = status_placeholder if status_placeholder else st.empty()
     
     # Gemini Optimization: Batch Translation
     # If engine is Gemini, we use a single request (or few chunks) to avoid Rate Limits (15 RPM / 20 RPD)
@@ -548,8 +557,8 @@ def translate_paragraphs(paragraphs: List[dict], engine_name="Google", source_la
 
     # ... (Original loop for other engines)
     
-    # Header for streaming view
-    if output_placeholder:
+    # Header for streaming view - ONY if single placeholder
+    if output_placeholder and not isinstance(output_placeholder, list):
         output_placeholder.markdown("### 翻訳プレビュー (生成中...)")
     
     streaming_text = ""
@@ -622,26 +631,34 @@ def translate_paragraphs(paragraphs: List[dict], engine_name="Google", source_la
 
         # Update Streaming UI
         if output_placeholder:
-            # Simple markdown concatenation for preview
-            # This allows user to see text as it arrives
-            if tag == 'h2':
-                streaming_text += f"\n\n## {res_text}\n\n"
-            elif tag == 'h3':
-                streaming_text += f"\n\n### {res_text}\n\n"
+            if isinstance(output_placeholder, list):
+                # Row-by-row update
+                if i < len(output_placeholder):
+                    ph = output_placeholder[i]
+                    # Format nicely with consistent style
+                    # Apply simple card style for consistency
+                    # Use item_id_prefix if available to support JS alignment
+                    div_id = f'{item_id_prefix}-{i}'
+                    formatted_text = f"""<div id="{div_id}" class="trans-paragraph-block" style='color:#334155; line-height:1.6; font-size:15px; animation: fadeIn 0.5s;'>{res_text}</div>"""
+                    ph.markdown(formatted_text, unsafe_allow_html=True)
             else:
-                streaming_text += f"\n\n{res_text}\n\n"
-            
-            # Show current state
-            with output_placeholder.container():
-                st.markdown(streaming_text)
-                if is_error:
-                    st.error(f"⚠️ エラーにより中断: {used_engine}")
+                # Single container update (Legacy)
+                if tag == 'h2':
+                    streaming_text += f"\n\n## {res_text}\n\n"
+                elif tag == 'h3':
+                    streaming_text += f"\n\n### {res_text}\n\n"
+                else:
+                    streaming_text += f"\n\n{res_text}\n\n"
+                
+                # Show current state
+                with output_placeholder.container():
+                    st.markdown(streaming_text)
+                    if is_error:
+                        st.error(f"⚠️ エラーにより中断: {used_engine}")
 
         if is_error:
              break
 
-    return translated_data
-    
     # Clear progress UI when done
     progress_placeholder.empty()
     status_area.empty()

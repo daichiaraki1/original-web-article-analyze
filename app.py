@@ -14,12 +14,142 @@ from st_copy_to_clipboard import st_copy_to_clipboard
 from src.utils import create_images_zip, fetch_image_data_v10, make_diff_html, detect_language
 
 import extra_streamlit_components as stx
+import base64
+import os
 
-# Add function to manage cookies
-def get_manager():
-    return stx.CookieManager()
+# --- Modern Pictogram Icons (Base64 encoded SVGs for reliability) ---
+ICON_CIRCLE_CHECK_OUTLINE = "data:image/svg+xml;base64," + base64.b64encode(b"""
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='#94a3b8' stroke-width='1.5'>
+  <circle cx='12' cy='12' r='10'/>
+  <path d='M8 12l2.5 2.5L16 9' stroke-linecap='round' stroke-linejoin='round'/>
+</svg>
+""").decode()
 
+ICON_CIRCLE_CHECK_SOLID = "data:image/svg+xml;base64," + base64.b64encode(b"""
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='#3b82f6' stroke='none'>
+  <circle cx='12' cy='12' r='11'/>
+  <path d='M8 12l2.5 2.5L16 9' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' fill='none'/>
+</svg>
+""").decode()
 
+ICON_DOWNLOAD_TRAY = "data:image/svg+xml;base64," + base64.b64encode(b"""
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='#64748b' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'>
+  <path d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'/>
+  <polyline points='7 10 12 15 17 10'/>
+  <line x1='12' y1='15' x2='12' y2='3'/>
+</svg>
+""").decode()
+
+# Load and encode copy icon (global)
+copy_icon_b64 = ""
+icon_path = os.path.join(os.path.dirname(__file__), "copy_icon.png")
+if os.path.exists(icon_path):
+    with open(icon_path, "rb") as f:
+        copy_icon_b64 = base64.b64encode(f.read()).decode()
+
+copy_icon_html = f"data:image/png;base64,{copy_icon_b64}" if copy_icon_b64 else ""
+
+def render_copy_header(title, text_to_copy, key_suffix=""):
+    """
+    Renders a unified header with a title and a premium copy button.
+    Uses st.components.v1.html for a styleable JS-based copy button.
+    """
+    # Escape special characters for JS string literal
+    safe_text = text_to_copy.replace("\\", "\\\\").replace("`", "\\`").replace("$", "\\$").replace("\n", "\\n").replace("\r", "\\r")
+    
+    # Determine icon markup (Custom vs Default)
+    # If custom icon exists, do not render default SVG to avoid "double icon" look.
+    if copy_icon_b64:
+        icon_markup = f'<img src="data:image/png;base64,{copy_icon_b64}" id="custom-icon-{key_suffix}" style="width: 18px; height: 18px; object-fit: contain;">'
+    else:
+        icon_markup = f'''<svg id="copy-icon-{key_suffix}" style="width: 18px; height: 18px; color: #64748b;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>'''
+
+    html_code = f"""
+    <div style="
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #f1f5f9;
+        padding: 0 16px;
+        border-radius: 10px 10px 0 0;
+        height: 48px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        box-sizing: border-box;
+    ">
+        <div style="font-weight: 700; color: #475569; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px;">{title}</div>
+        <button id="copy-btn-{key_suffix}" style="
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            width: 32px;
+            height: 32px;
+            cursor: pointer;
+            transition: all 0.2s;
+            padding: 0;
+            outline: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: -4px; /* Move it up even more */
+        " title="コピー">
+            {icon_markup}
+            <span id="copy-check-{key_suffix}" style="display: none; color: #22c55e; font-size: 18px; font-weight: bold;">✓</span>
+        </button>
+    </div>
+    <script>
+        const btn = document.getElementById('copy-btn-{key_suffix}');
+        const iconNormal = document.getElementById('copy-icon-{key_suffix}');
+        const iconCustom = document.getElementById('custom-icon-{key_suffix}');
+        const check = document.getElementById('copy-check-{key_suffix}');
+        
+        btn.onclick = function() {{
+            const textArea = document.createElement("textarea");
+            textArea.value = `{safe_text}`;
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {{
+                document.execCommand('copy');
+                // Visual feedback
+                if (iconNormal) iconNormal.style.display = 'none';
+                if (iconCustom) iconCustom.style.display = 'none';
+                check.style.display = 'inline';
+                btn.style.borderColor = '#22c55e';
+                btn.style.backgroundColor = '#f0fdf4';
+                
+                setTimeout(() => {{
+                    if (iconNormal) iconNormal.style.display = 'inline';
+                    if (iconCustom) iconCustom.style.display = 'inline';
+                    check.style.display = 'none';
+                    btn.style.borderColor = '#e2e8f0';
+                    btn.style.backgroundColor = '#ffffff';
+                }}, 2000);
+            }} catch (err) {{
+                console.error('Copy failed:', err);
+            }}
+            document.body.removeChild(textArea);
+        }};
+
+        btn.onmouseover = function() {{
+            if (check.style.display === 'none') {{
+                btn.style.borderColor = '#3b82f6';
+                btn.style.backgroundColor = '#f0f9ff';
+            }}
+        }};
+        btn.onmouseout = function() {{
+            if (check.style.display === 'none') {{
+                btn.style.borderColor = '#e2e8f0';
+                btn.style.backgroundColor = '#ffffff';
+            }}
+        }};
+    </script>
+    """
+    components.html(html_code, height=48)
 
 # --- メイン UI ---
 def main():
@@ -43,6 +173,14 @@ def main():
     if cookie_gemini and not st.session_state.get("gemini_api_key"):
         st.session_state["gemini_api_key"] = cookie_gemini
     
+    # Gemini Model Selection Persistence
+    cookie_gemini_model = cookies.get("gemini_v9_model") if cookies else None
+    if cookie_gemini_model and "gemini_model_setting" not in st.session_state:
+        st.session_state["gemini_model_setting"] = cookie_gemini_model
+        st.session_state["gemini_label_current"] = f"Gemini ({cookie_gemini_model})"
+    elif "gemini_label_current" not in st.session_state:
+        st.session_state["gemini_label_current"] = "Gemini (gemini-2.5-flash)"
+    
     # Debug Cookies
     # st.write(f"DEBUG COOKIES: {cookie_manager.get_all()}")
     if "sel_imgs" not in st.session_state:
@@ -51,38 +189,39 @@ def main():
         st.session_state.s_url_v9 = ""
     if "c_url_v9" not in st.session_state:
         st.session_state.c_url_v9 = ""
-    st.markdown("""
+
+    st.markdown(f"""
     <style>
         /* 1. 基本設定と白モードの徹底強制 */
-        .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"], [data-testid="stToolbar"] {
+        .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"], [data-testid="stToolbar"] {{
             background-color: #f8fafc !important;
             color: #1e293b !important;
-        }
+        }}
 
         /* 2. 入力欄: 徹底的に白固定 & フォーカス時のグレー防止 */
         input[type="text"], 
         [data-testid="stTextInput"] div,
         [data-baseweb="input"],
-        [data-baseweb="base-input"] {
+        [data-baseweb="base-input"] {{
             background-color: #ffffff !important;
             color: #1e293b !important;
             border-color: #cbd5e1 !important;
-        }
+        }}
         /* フォーカス時も白を維持 */
-        [data-baseweb="base-input"]:focus-within {
+        [data-baseweb="base-input"]:focus-within {{
             background-color: #ffffff !important;
             border-color: #3b82f6 !important;
             box-shadow: 0 0 0 1px #3b82f6 !important;
-        }
+        }}
         
         /* "Press Enter to apply" を非表示にする (スッキリさせるため) */
-        [data-testid="InputInstructions"] {
+        [data-testid="InputInstructions"] {{
             display: none !important;
-        }
+        }}
         
         /* 3. ボタンのスタイル (通常ボタン & ダウンロードボタン) */
         .stButton > button, 
-        [data-testid="stDownloadButton"] > button {
+        [data-testid="stDownloadButton"] > button {{
             background-color: #ffffff !important;
             color: #1e293b !important;
             border: 1px solid #cbd5e1 !important;
@@ -90,75 +229,79 @@ def main():
             border-radius: 8px !important;
             font-weight: 600 !important;
             transition: all 0.2s !important;
-        }
-        .stButton > button:hover,
-        [data-testid="stDownloadButton"] > button:hover {
+        }}
+        .stButton > button:hover, 
+        [data-testid="stDownloadButton"] > button:hover {{
             border-color: #3b82f6 !important;
             color: #3b82f6 !important;
-            background-color: #f0f9ff !important;
-        }
+            background-color: #eff6ff !important;
+        }}
+
+        /* 4. Obsolete Copy Button Style Removed (Using render_copy_header instead) */
+        
+        .stButton > button:hover,
         
         /* 選択ボタン (チェックボックス風) - 未選択状態 */
-        .stButton > button[kind="secondary"]:has(> div > p:first-child) {
+        .stButton > button[kind="secondary"]:has(> div > p:first-child) {{
             background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important;
             border: 2px solid #e2e8f0 !important;
             color: #64748b !important;
             border-radius: 10px !important;
             font-weight: 500 !important;
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
-        }
-        .stButton > button[kind="secondary"]:has(> div > p:first-child):hover {
+        }}
+        .stButton > button[kind="secondary"]:has(> div > p:first-child):hover {{
             background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%) !important;
             border-color: #94a3b8 !important;
             color: #475569 !important;
             transform: translateY(-1px);
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07) !important;
-        }
+        }}
         
         /* 選択ボタン (チェックボックス風) - 選択状態 */
-        .stButton > button[kind="primary"] {
+        .stButton > button[kind="primary"] {{
             background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
             border: 2px solid #2563eb !important;
             color: #ffffff !important;
             border-radius: 10px !important;
             font-weight: 600 !important;
             box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35) !important;
-        }
-        .stButton > button[kind="primary"]:hover {
+        }}
+        .stButton > button[kind="primary"]:hover {{
             background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
             border-color: #1d4ed8 !important;
             transform: translateY(-1px);
             box-shadow: 0 6px 16px rgba(59, 130, 246, 0.45) !important;
-        }
+        }}
 
         /* セレクトボックス (ドロップダウン) のスタイル - 目立たせる */
-        [data-testid="stSelectbox"] > div > div {
+        [data-testid="stSelectbox"] > div > div {{
             background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%) !important;
             border: 2px solid #3b82f6 !important;
             border-radius: 10px !important;
             box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15) !important;
             transition: all 0.2s ease !important;
-        }
-        [data-testid="stSelectbox"] > div > div:hover {
+        }}
+        [data-testid="stSelectbox"] > div > div:hover {{
             border-color: #2563eb !important;
             box-shadow: 0 6px 16px rgba(59, 130, 246, 0.25) !important;
             transform: translateY(-1px);
-        }
+        }}
         /* セレクトボックスの矢印アイコンを目立たせる */
-        [data-testid="stSelectbox"] svg {
+        [data-testid="stSelectbox"] svg {{
             color: #3b82f6 !important;
-        }
+        }}
         
         /* 5. タブデザイン (幅を広げる) */
-        .stTabs [data-baseweb="tab-list"] {
+        .stTabs [data-baseweb="tab-list"] {{
             gap: 8px;
             background-color: #e2e8f0;
             padding: 6px;
             border-radius: 12px;
             margin-bottom: 2rem;
             display: flex; /* フレックスコンテナ化 */
-        }
-        .stTabs [data-baseweb="tab"] {
+        }}
+        .stTabs [data-baseweb="tab"] {{
             flex: 1; /* 均等に広げる */
             background-color: transparent !important;
             color: #64748b !important;
@@ -166,106 +309,163 @@ def main():
             border: none !important;
             justify-content: center; /* 文字中央揃え */
             white-space: nowrap;
-        }
-        .stTabs [aria-selected="true"] {
+        }}
+        .stTabs [aria-selected="true"] {{
             background-color: #ffffff !important;
             color: #3b82f6 !important;
             border-radius: 8px !important;
             box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
-        }
+        }}
 
         /* 6. レイアウト: Single Scroll Parent (単一スクロール) - 翻訳タブ専用 */
-        .trans-unified-container {
+        .trans-unified-container {{
             height: 78vh; 
             border: 1px solid #e2e8f0; border-radius: 20px; 
             overflow: hidden; background: #ffffff !important;
             box-shadow: 0 10px 30px rgba(0,0,0,0.05);
             display: flex; flex-direction: column;
-        }
-        .trans-unified-header { 
+        }}
+        .trans-unified-header {{ 
             display: flex;
             background: #f1f5f9 !important; 
             border-bottom: 1px solid #e2e8f0; 
             flex-shrink: 0; /* ヘッダーは縮まない */
-        }
-        .trans-header-cell { 
+        }}
+        .trans-header-cell {{ 
             flex: 1;
             padding: 14px 24px; font-weight: 800; color: #475569 !important; 
             text-transform: uppercase; font-size: 0.8em;
             border-right: 1px solid #e2e8f0;
-        }
+        }}
         
         /* スクロール領域 (全体を包む) - 翻訳タブ専用 */
-        .trans-scroll-pane-wrapper {
+        .trans-scroll-pane-wrapper {{
             flex: 1;
             overflow-y: auto; /* ここでスクロール */
             background: white !important;
             scrollbar-width: thin;
             scrollbar-color: #cbd5e1 transparent;
-        }
-        .trans-scroll-pane-wrapper::-webkit-scrollbar { width: 6px; }
-        .trans-scroll-pane-wrapper::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 3px; }
-        .trans-scroll-pane-wrapper::-webkit-scrollbar-track { background: transparent; }
+        }}
+        .trans-scroll-pane-wrapper::-webkit-scrollbar {{ width: 6px; }}
+
+        /* -----------------------------------------------------------------
+           7. Image Tab Modern Buttons (Icon Only)
+           ----------------------------------------------------------------- */
+        
+        /* Select Button (Circle / Check) - Targeting via parent container */
+        div[data-testid="stElementContainer"]:has(.img-btn-select) button {{
+            background-color: transparent !important;
+            border: none !important;
+            padding: 0 !important;
+            width: 32px !important;
+            height: 32px !important;
+            min-height: 32px !important;
+            background-image: url("{ICON_CIRCLE_CHECK_OUTLINE}") !important;
+            background-repeat: no-repeat !important;
+            background-position: center !important;
+            background-size: 26px !important;
+            box-shadow: none !important;
+            transition: transform 0.1s !important;
+        }}
+        div[data-testid="stElementContainer"]:has(.img-btn-select) button p {{
+            display: none !important;
+        }}
+        div[data-testid="stElementContainer"]:has(.img-btn-select) button:hover {{
+            background-color: rgba(0,0,0,0.03) !important;
+            border-radius: 50% !important;
+        }}
+        
+        /* Selected State */
+        div[data-testid="stElementContainer"]:has(.img-btn-select.selected) button {{
+            background-image: url("{ICON_CIRCLE_CHECK_SOLID}") !important;
+        }}
+
+        /* Save Button (Download Arrow) */
+        div[data-testid="stElementContainer"]:has(.img-btn-save) button {{
+            background-color: transparent !important;
+            border: none !important;
+            padding: 0 !important;
+            width: 32px !important;
+            height: 32px !important;
+            min-height: 32px !important;
+            background-image: url("{ICON_DOWNLOAD_TRAY}") !important;
+            background-repeat: no-repeat !important;
+            background-position: center !important;
+            background-size: 24px !important;
+            box-shadow: none !important;
+            transition: transform 0.1s !important;
+        }}
+        div[data-testid="stElementContainer"]:has(.img-btn-save) button p {{
+            display: none !important;
+        }}
+        div[data-testid="stElementContainer"]:has(.img-btn-save) button:hover {{
+            background-color: rgba(0,0,0,0.03) !important;
+            border-radius: 4px !important;
+        }}
+        .trans-scroll-pane-wrapper::-webkit-scrollbar-thumb {{ background-color: #cbd5e1; border-radius: 3px; }}
+        .trans-scroll-pane-wrapper::-webkit-scrollbar-track {{ background: transparent; }}
 
         /* Grid Container - 左右2列のレイアウト - 翻訳タブ専用 */
-        .trans-grid-container {
+        .trans-grid-container {{
             display: grid;
             grid-template-columns: 1fr 1fr;
             height: 100%;
             overflow: hidden;
-        }
+        }}
         
         /* 各列（左右それぞれ独立したスクロール領域） - 翻訳タブ専用 */
-        .trans-column-wrapper {
+        .trans-column-wrapper {{
             overflow-y: auto;
             scrollbar-width: thin;
             scrollbar-color: #cbd5e1 transparent;
             /* 選択範囲を列内に限定 */
             isolation: isolate;
-        }
-        .trans-column-wrapper::-webkit-scrollbar { width: 6px; }
-        .trans-column-wrapper::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 3px; }
-        .trans-column-wrapper::-webkit-scrollbar-track { background: transparent; }
+        }}
+        .trans-column-wrapper::-webkit-scrollbar {{ width: 6px; }}
+        .trans-column-wrapper::-webkit-scrollbar-thumb {{ background-color: #cbd5e1; border-radius: 3px; }}
+        .trans-column-wrapper::-webkit-scrollbar-track {{ background: transparent; }}
 
-        .trans-paragraph-block {
+        .trans-paragraph-block {{
             padding: 24px 32px;
             line-height: 1.9;
             border-bottom: 1px solid #f1f5f9;
             box-sizing: border-box;
+            transition: min-height 0.2s ease;
+            margin-bottom: 0 !important;
             user-select: text;
             -webkit-user-select: text;
             -moz-user-select: text;
             -ms-user-select: text;
-        }
+        }}
         
         /* テキスト選択時のスタイル - 白文字に */
-        .trans-paragraph-block::selection {
+        .trans-paragraph-block::selection {{
             background-color: #3b82f6;
             color: #ffffff;
-        }
-        .trans-paragraph-block::-moz-selection {
+        }}
+        .trans-paragraph-block::-moz-selection {{
             background-color: #3b82f6;
             color: #ffffff;
-        }
-        .trans-paragraph-block *::selection {
+        }}
+        .trans-paragraph-block *::selection {{
             background-color: #3b82f6;
             color: #ffffff;
-        }
-        .trans-paragraph-block *::-moz-selection {
+        }}
+        .trans-paragraph-block *::-moz-selection {{
             background-color: #3b82f6;
             color: #ffffff;
-        }
+        }}
         
         /* 右列のみ右ボーダー */
-        .trans-column-wrapper:first-child .trans-paragraph-block {
+        .trans-column-wrapper:first-child .trans-paragraph-block {{
             border-right: 1px solid #f1f5f9;
-        }
-        .trans-paragraph-block h3 { margin: 0 0 16px 0 !important; line-height: 1.4 !important; font-weight: 800 !important; }
+        }}
+        .trans-paragraph-block h3 {{ margin: 0 0 16px 0 !important; line-height: 1.4 !important; font-weight: 800 !important; }}
         
-        .trans-engine-label { 
+        .trans-engine-label {{ 
             font-size: 10px; color: #94a3b8; background: #f1f5f9; 
             padding: 3px 8px; border-radius: 6px; display: inline-block; margin-bottom: 8px; font-weight: 600;
-        }
+        }}
     </style>
     """, unsafe_allow_html=True)
 
@@ -361,15 +561,27 @@ def main():
                 if is_english:
                         st.session_state["src_lang_select"] = "英語"
                 elif "weixin.qq.com" in src_url:
-                    # WeChatの場合は、英語以外（unknown, ja, mixed, ko等）はすべて中国語とみなす
-                    st.session_state["src_lang_select"] = "中国語 (簡体字)"
+                    # WeChat Special Handling
+                    # "ja" -> False positive for Chinese (Kanji) -> Force Chinese
+                    # "mixed" -> Likely Chinese with English UI elements -> Force Chinese
+                    # "unknown" -> Fallback to Chinese
+                    if detected_code.lower().startswith("ja") or detected_code == "mixed" or detected_code == "unknown":
+                        st.session_state["src_lang_select"] = "中国語 (簡体字)"
+                    elif is_chinese:
+                        # Explicit Chinese
+                        if "tw" in detected_code.lower() or "hant" in detected_code.lower():
+                            st.session_state["src_lang_select"] = "中国語 (繁体字)"
+                        else:
+                            st.session_state["src_lang_select"] = "中国語 (簡体字)"
+                    else:
+                        # Other (e.g. fr, es, or specific code) -> Auto
+                        st.session_state["src_lang_select"] = "自動検出"
                 elif is_chinese:
                     if "tw" in detected_code.lower() or "hant" in detected_code.lower():
                         st.session_state["src_lang_select"] = "中国語 (繁体字)"
                     else:
                         st.session_state["src_lang_select"] = "中国語 (簡体字)"
                 else:
-                    # その他の言語 (es, fr, ja等) -> 自動検出
                     st.session_state["src_lang_select"] = "自動検出"
 
             # 3. 言語選択UI (ラジオボタン)
@@ -398,6 +610,10 @@ def main():
                      # ユーザー体験的にはクリアしたほうが自然だが、今回は維持する？
                      # 維持すると再翻訳ボタンが必要。
                      st.rerun()
+
+                # DEBUG info for user verification (Temporary)
+                if "detected_code" in locals():
+                    st.markdown(f"<div style='font-size:0.7em; color:#cbd5e1; margin-top:-5px;'>Detected: {detected_code}</div>", unsafe_allow_html=True)
                 
             # Check for cookie-stored API key on load -> Moved to global scope
             # pass
@@ -444,24 +660,8 @@ def main():
                     else:
                         # If key is saved and unchanged, show nothing or just text
                         if current_saved_key:
-                            st.markdown("""
-                                <div style="
-                                    margin-top: -15px; 
-                                    margin-bottom: 25px;
-                                    padding: 8px 12px; 
-                                    background-color: #dcfce7; 
-                                    color: #166534; 
-                                    border-radius: 6px; 
-                                    font-size: 0.9em; 
-                                    font-weight: 600;
-                                    border: 1px solid #bbf7d0;
-                                    display: inline-flex;
-                                    align-items: center;
-                                    gap: 6px;
-                                ">
-                                    ✅ APIキーは保存されています
-                                </div>
-                            """, unsafe_allow_html=True)
+                            # Redundant message removed (handled by render_deepl_usage_ui)
+                            pass
                     
                     # Revert: Show status and usage INSIDE the expander as requested by user
                     # Use explicit placeholders to try to manage state better
@@ -540,39 +740,60 @@ def main():
 
                          # Model Selection Dropdown
                          available_models = st.session_state.get("gemini_available_models", ["gemini-2.5-flash"])
+                         
+                         # Determine initial index from session state or cookie
+                         saved_model = st.session_state.get("gemini_model_setting")
                          default_ix = 0
-                         # Try to find a good default if not set
-                         target_default = "gemini-2.5-flash"
-                         if target_default in available_models:
-                             default_ix = available_models.index(target_default)
+                         if saved_model in available_models:
+                             default_ix = available_models.index(saved_model)
+                         else:
+                             # Fallback to gemini-2.5-flash if available
+                             target_default = "gemini-2.5-flash"
+                             if target_default in available_models:
+                                 default_ix = available_models.index(target_default)
                          
                          selected_model = st.selectbox(
                              "使用するGeminiモデル", 
                              available_models, 
                              index=default_ix,
-                             key="gemini_model_setting",
+                             key="gemini_model_setting_widget",
                              help="通常は最新のFlashモデルが推奨されます。"
                          )
                          
+                         # Sync selected model to global label and cookie immediately
+                         if selected_model:
+                             if selected_model != st.session_state.get("gemini_model_setting"):
+                                 st.session_state["gemini_model_setting"] = selected_model
+                                 # Update persistent cookie
+                                 expires = datetime.datetime.now() + datetime.timedelta(days=30)
+                                 cookie_manager.set("gemini_v9_model", selected_model, expires_at=expires)
+                             
+                             st.session_state["gemini_label_current"] = f"Gemini ({selected_model})"
                          
-                         st.markdown("""
-                            <div style="
-                                margin-top: -15px; 
-                                margin-bottom: 10px;
-                                padding: 8px 12px; 
-                                background-color: #dcfce7; 
-                                color: #166534; 
-                                border-radius: 6px; 
-                                font-size: 0.9em; 
-                                font-weight: 600;
-                                border: 1px solid #bbf7d0;
-                                display: inline-flex;
-                                align-items: center;
-                                gap: 6px;
-                            ">
-                                ✅ APIキーは保存されています
-                            </div>
-                        """, unsafe_allow_html=True)
+                         
+                         
+                         # Use a placeholder to prevent double rendering of usage/status
+                         gemini_status_placeholder = st.empty()
+                         
+                         with gemini_status_placeholder.container():
+                             st.markdown("""
+                                <div style="
+                                    margin-top: -15px; 
+                                    margin-bottom: 10px;
+                                    padding: 8px 12px; 
+                                    background-color: #dcfce7; 
+                                    color: #166534; 
+                                    border-radius: 6px; 
+                                    font-size: 0.9em; 
+                                    font-weight: 600;
+                                    border: 1px solid #bbf7d0;
+                                    display: inline-flex;
+                                    align-items: center;
+                                    gap: 6px;
+                                ">
+                                    ✅ APIキーは保存されています
+                                </div>
+                            """, unsafe_allow_html=True)
                 
                 # Gemini Usage Display (Local Estimation)
                 # API does not provide quota info, so we track locally.
@@ -600,40 +821,42 @@ def main():
                 limit = 50 # Visual limit
                 usage_percent = min(current_count / limit, 1.0) * 100
                 
-                st.markdown(f"""
-                <div style="margin-top: 10px; margin-bottom: 5px; font-weight: bold; font-size: 0.9em; color: #475569;">
-                    本日使用回数 (推定): {current_count} 回
-                </div>
-                """, unsafe_allow_html=True)
-                
-                # Custom Progress Bar (Same style as DeepL)
-                bar_html = f"""
-                <div style="
-                    background-color: #f1f5f9;
-                    width: 100%;
-                    height: 8px;
-                    border-radius: 4px;
-                    margin-top: 5px;
-                    overflow: hidden;
-                    margin-bottom: 10px;
-                ">
+                # Render usage inside the SAME placeholder container to group them
+                with gemini_status_placeholder.container():
+                    st.markdown(f"""
+                    <div style="margin-top: 10px; margin-bottom: 5px; font-weight: bold; font-size: 0.9em; color: #475569;">
+                        本日使用回数 (推定): {current_count} 回
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Custom Progress Bar (Same style as DeepL)
+                    bar_html = f"""
                     <div style="
-                        background-color: #3b82f6;
-                        width: {usage_percent}%;
-                        height: 100%;
+                        background-color: #f1f5f9;
+                        width: 100%;
+                        height: 8px;
                         border-radius: 4px;
-                        transition: width 0.5s ease;
-                    "></div>
-                </div>
-                """
-                st.markdown(bar_html, unsafe_allow_html=True)
-                
-                st.markdown("""
-                <div style="font-size: 0.8em; color: #94a3b8;">
-                    ※ Gemini APIは正確な使用量を取得できないため、このアプリ内での実行回数をカウントしています。<br>
-                    ※ 無料枠の上限は非公開ですが、1日50回程度が目安と言われています。
-                </div>
-                """, unsafe_allow_html=True)
+                        margin-top: 5px;
+                        overflow: hidden;
+                        margin-bottom: 10px;
+                    ">
+                        <div style="
+                            background-color: #3b82f6;
+                            width: {usage_percent}%;
+                            height: 100%;
+                            border-radius: 4px;
+                            transition: width 0.5s ease;
+                        "></div>
+                    </div>
+                    """
+                    st.markdown(bar_html, unsafe_allow_html=True)
+                    
+                    st.markdown("""
+                    <div style="font-size: 0.8em; color: #94a3b8; margin-bottom: 10px;">
+                        ※ Gemini APIは正確な使用量を取得できないため、このアプリ内での実行回数をカウントしています。<br>
+                        ※ 無料枠の上限は非公開ですが、1日50回程度が目安と言われています。
+                    </div>
+                    """, unsafe_allow_html=True)
 
                 if st.session_state.get("gemini_key_saved_success", False):
                      st.success("✅ Geminiキーを保存しました")
@@ -685,30 +908,17 @@ def main():
                 </style>
                 """, unsafe_allow_html=True)
                 
+                # --- Error Banner Display ---
+                if st.session_state.get("v9_error_banner_html"):
+                    st.markdown(st.session_state["v9_error_banner_html"], unsafe_allow_html=True)
+
                 # ヘッダー行（3列：原文、翻訳1、比較翻訳）
                 # 比較翻訳は初期状態では狭い
                 hdr_col1, hdr_col2, hdr_col3 = st.columns([5, 5, 2])
                 
                 with hdr_col1:
-                    oh_col, ob_col = st.columns([0.7, 0.3])
-                    with oh_col:
-                        st.markdown("""
-                        <div style="
-                            background: #f1f5f9;
-                            padding: 12px 16px;
-                            border-radius: 10px 10px 0 0;
-                            font-weight: 700;
-                            color: #475569;
-                            text-transform: uppercase;
-                            font-size: 0.75em;
-                            letter-spacing: 0.5px;
-                        ">原文 (ORIGINAL)</div>
-                        """, unsafe_allow_html=True)
-                    with ob_col:
-                        # Copy Button for Original (Pre-translation)
-                        if src_article:
-                            full_orig_text = f"# {src_article.title}\n\n" + "\n\n".join([p["text"] for p in src_article.structured_html_parts])
-                            st_copy_to_clipboard(full_orig_text, "📋 コピー", key="copy_orig_pre")
+                    full_orig_text = f"# {src_article.title}\n\n" + "\n\n".join([p["text"] for p in src_article.structured_html_parts]) if src_article else ""
+                    render_copy_header("原文 (ORIGINAL)", full_orig_text, "orig_pre")
                 
                 with hdr_col2:
                     st.markdown("""
@@ -728,7 +938,7 @@ def main():
                     if st.session_state.get("deepl_api_key"):
                         engines.insert(2, "DeepL")
                     if st.session_state.get("gemini_api_key"):
-                        gemini_label = st.session_state.get("gemini_label_current", "Gemini (gemini-3-flash)")
+                        gemini_label = st.session_state.get("gemini_label_current", "Gemini (gemini-2.5-flash)")
                         engines.insert(3 if "DeepL" in engines else 2, gemini_label)
                     selected_engine = st.selectbox(
                         "翻訳エンジン",
@@ -738,6 +948,11 @@ def main():
                         label_visibility="collapsed"
                     )
                     
+                    # --- Progress & Status Area (Moved to Top) ---
+                    st.markdown("<div style='margin-bottom: 5px;'></div>", unsafe_allow_html=True)
+                    status_area_top = st.empty()
+                    progress_area_top = st.empty()
+
                     st.markdown("<div style='margin-bottom: -40px;'></div>", unsafe_allow_html=True)
                     
                     # エンジンが選択されたら翻訳を実行
@@ -789,6 +1004,10 @@ def main():
                     ">比較翻訳</div>
                     """, unsafe_allow_html=True)
                 
+                # Initialize placeholders for deferred execution
+                t1_placeholders = None
+                t2_placeholders = None
+
                 # 3列コンテンツエリア（比較翻訳は狭い）
                 pc1, pc2, pc3 = st.columns([5, 5, 2])
                 
@@ -810,15 +1029,19 @@ def main():
                     
                 with pc2:
                     # 翻訳1プレースホルダー
-                    st.markdown("""
-                    <div class="pre-trans-placeholder">
-                        <div>
-                            <div style="font-size: 2.5em; margin-bottom: 1rem; opacity: 0.5;">🌐</div>
-                            <div style="font-weight:600;">エンジンを選択</div>
-                            <div style="font-size:0.85em; margin-top:0.5rem;">上のドロップダウンから<br>翻訳エンジンを選択</div>
+                    # If translating, prepare the placeholder
+                    if st.session_state.get("run_translation_1"):
+                        t1_placeholders = st.empty()
+                    else:
+                        st.markdown("""
+                        <div class="pre-trans-placeholder">
+                            <div>
+                                <div style="font-size: 2.5em; margin-bottom: 1rem; opacity: 0.5;">🌐</div>
+                                <div style="font-weight:600;">エンジンを選択</div>
+                                <div style="font-size:0.85em; margin-top:0.5rem;">上のドロップダウンから<br>翻訳エンジンを選択</div>
+                            </div>
                         </div>
-                    </div>
-                    """, unsafe_allow_html=True)
+                        """, unsafe_allow_html=True)
                 
                 with pc3:
                     # 比較翻訳プレースホルダー（狭いバージョン）
@@ -895,30 +1118,18 @@ def main():
                     hdr_col1, hdr_col2, hdr_col3 = st.columns([5, 5, 2])
                 
                 with hdr_col1:
-                    oh_col, ob_col = st.columns([0.75, 0.25])
-                    with oh_col:
-                        st.markdown("""
-                        <div style="
-                            background: #f1f5f9;
-                            padding: 12px 16px;
-                            border-radius: 10px 10px 0 0;
-                            font-weight: 700;
-                            color: #475569;
-                            text-transform: uppercase;
-                            font-size: 0.75em;
-                            letter-spacing: 0.5px;
-                        ">原文 (ORIGINAL)</div>
-                        """, unsafe_allow_html=True)
-                    with ob_col:
-                        # Copy Button for Original
-                        full_orig_text = f"# {src_article.title}\n\n" + "\n\n".join([p["text"] for p in src_article.structured_html_parts])
-                        st_copy_to_clipboard(full_orig_text, "📋 コピー", key="copy_orig")
+                    # Use unified header
+                    full_orig_text = f"# {src_article.title}\n\n" + "\n\n".join([p["text"] for p in src_article.structured_html_parts])
+                    render_copy_header("原文 (ORIGINAL)", full_orig_text, "orig")
+                
+                # Further cleanup of duplicate columns if necessary
+                # But let's just use the call correctly.
                 
                 with hdr_col2:
                     # Engine 1 Selector
                     engines = ["Google", "DeepL", "MyMemory"] if st.session_state.get("deepl_api_key") else ["Google", "MyMemory"]
                     if st.session_state.get("gemini_api_key"):
-                        gemini_label = st.session_state.get("gemini_label_current", "Gemini (gemini-3-flash)")
+                        gemini_label = st.session_state.get("gemini_label_current", "Gemini (gemini-2.5-flash)")
                         engines.insert(3 if "DeepL" in engines else 2, gemini_label)
                     
                     # Fallback detection
@@ -929,32 +1140,18 @@ def main():
                     elif "MyMemory" in engine_1 and "Fallback" not in engine_1:
                         display_engine_1 = "MyMemory"
                     elif "Gemini" in engine_1:
-                         display_engine_1 = st.session_state.get("gemini_label_current", "Gemini (gemini-3-flash)")
+                         display_engine_1 = st.session_state.get("gemini_label_current", "Gemini (gemini-2.5-flash)")
                     
                     
                     current_engine_1_idx = engines.index(display_engine_1) if display_engine_1 in engines else 0
                     
-                    oh1_col, ob1_col = st.columns([0.75, 0.25])
-                    with oh1_col:
-                        st.markdown("""
-                        <div style="
-                            background: #f1f5f9;
-                            padding: 8px 16px;
-                            border-radius: 10px 10px 0 0;
-                            font-weight: 700;
-                            color: #475569;
-                            font-size: 0.75em;
-                        ">翻訳 1</div>
-                        """, unsafe_allow_html=True)
-                    with ob1_col:
-                        # Copy Button for Translation 1
-                        trans_data_1 = st.session_state.get(t_key, [])
-                        t1_text_parts = [p.get("text", "") for p in trans_data_1]
-                        t1_title = st.session_state.get(f"t_ttl_v9_{src_url}", "")
-                        full_trans_1 = f"# {t1_title}\n\n" + "\n\n".join(t1_text_parts)
-                        st_copy_to_clipboard(full_trans_1, "📋 コピー", key="copy_trans_1")
+                    # Use unified header
+                    trans_data_1 = st.session_state.get(t_key, [])
+                    t1_title = st.session_state.get(f"t_ttl_v9_{src_url}", "")
+                    full_trans_1 = f"# {t1_title}\n\n" + "\n\n".join([p["text"] for p in trans_data_1])
+                    render_copy_header("翻訳 1", full_trans_1, "trans_1")
                     
-                    st.markdown("<div style='margin-bottom: -40px;'></div>", unsafe_allow_html=True)
+                    st.markdown("<div style='margin-bottom: -90px;'></div>", unsafe_allow_html=True)
                     new_engine_1 = st.selectbox(
                         "翻訳エンジン 1",
                         engines,
@@ -976,89 +1173,17 @@ def main():
                     prev_engine_1 = st.session_state.get("engine_1_selected", engine_1)
                     if new_engine_1 != prev_engine_1:
                         st.session_state["engine_1_selected"] = new_engine_1
-                        # Defer translation execution
-                        st.session_state["run_translation_1"] = True
-                        st.session_state["pending_engine_1"] = new_engine_1
-                        st.session_state["pending_model_1"] = st.session_state.get("gemini_model_setting", "gemini-2.5-flash")
-                        st.rerun()
-                    # 初期設定
-                    if "engine_1_selected" not in st.session_state:
-                        st.session_state["engine_1_selected"] = engine_1
-                
-                # --- 4. Post-Render Translation Execution (Deferred) ---
-                
-                # Translation 1 (Main)
-                if st.session_state.get("run_translation_1"):
-                    pending_engine = st.session_state.get("pending_engine_1")
-                    pending_model = st.session_state.get("pending_model_1")
-                    
-                    # Remove flags immediately to prevent re-run loop
-                    st.session_state["run_translation_1"] = False
-                    
-                    with st.spinner(f"{pending_engine} で翻訳中..."):
-                        # Use collected placeholders for streaming
-                        # Pass t1_placeholders to the translation function
-                        
-                        # Execute translation
-                        # Note: We need to update session_state[t_key] with the FINAL result
-                        # The function returns the list of dicts.
-                        
-                        # Progress placeholder (optional, maybe at the top?)
-                        # We can't put it at the top easily now.
-                        # For now, just use spinner.
-                        
+                        # Clear old translation state and error banners
+                        st.session_state["v9_error_banner_html"] = None
                         t_key = f"t_v9_{src_url}"
-                        st.session_state[t_key] = translate_paragraphs(
-                            src_article.structured_html_parts,
-                            engine_name=pending_engine,
-                            source_lang=source_lang,
-                            deepl_api_key=st.session_state.get("deepl_api_key"),
-                            gemini_api_key=st.session_state.get("gemini_api_key"),
-                            output_placeholder=t1_placeholders, # Streaming target
-                            progress_placeholder=None, # No single progress bar
-                            model_name=pending_model
-                        )
+                        if t_key in st.session_state: del st.session_state[t_key]
+                        t_ttl_key = f"t_ttl_v9_{src_url}"
+                        if t_ttl_key in st.session_state: del st.session_state[t_ttl_key]
                         
-                        # Title translation (non-streaming usually)
-                        st.session_state[f"t_ttl_v9_{src_url}"] = translate_paragraphs(
-                            [{"tag": "h1", "text": src_article.title}],
-                            engine_name=pending_engine,
-                            source_lang=source_lang,
-                            deepl_api_key=st.session_state.get("deepl_api_key"),
-                            gemini_api_key=st.session_state.get("gemini_api_key")
-                        )[0]["text"]
-                        
-                    st.rerun()
-
-                # Translation 2 (Compare)
-                if st.session_state.get("run_translation_2"):
-                    pending_engine = st.session_state.get("pending_engine_2")
-                    pending_model = st.session_state.get("pending_model_2")
-                    
-                    st.session_state["run_translation_2"] = False
-                    
-                    with st.spinner(f"{pending_engine} で比較翻訳中..."):
-                        t_key_2 = f"t_v9_{src_url}_2"
-                        st.session_state[t_key_2] = translate_paragraphs(
-                            src_article.structured_html_parts,
-                            engine_name=pending_engine,
-                            source_lang=source_lang,
-                            deepl_api_key=st.session_state.get("deepl_api_key"),
-                            gemini_api_key=st.session_state.get("gemini_api_key"),
-                            output_placeholder=t2_placeholders, # Streaming target
-                            progress_placeholder=None,
-                            model_name=pending_model
-                        )
-                        
-                        st.session_state[f"t_ttl_v9_{src_url}_2"] = translate_paragraphs(
-                            [{"tag": "h1", "text": src_article.title}],
-                            engine_name=pending_engine,
-                            source_lang=source_lang,
-                            deepl_api_key=st.session_state.get("deepl_api_key"),
-                            gemini_api_key=st.session_state.get("gemini_api_key")
-                        )[0]["text"]
-                        
-                    st.rerun()
+                        # Defer translation execution
+                # Deferred blocks moved to end of script
+                # Translation 1 (Main) - MOVED
+                # Translation 2 (Compare) - MOVED
                 
                 if is_compare_mode:
                     with hdr_col3:
@@ -1071,32 +1196,19 @@ def main():
                         elif "MyMemory" in engine_2 and "Fallback" not in engine_2:
                             display_engine_2 = "MyMemory"
                         elif "Gemini" in engine_2:
-                            display_engine_2 = st.session_state.get("gemini_label_current", "Gemini (gemini-3-flash)")
+                            display_engine_2 = st.session_state.get("gemini_label_current", "Gemini (gemini-2.5-flash)")
                             
                         current_engine_2_idx = engines.index(display_engine_2) if display_engine_2 in engines else 1
                         
-                        oh2_col, ob2_col = st.columns([0.75, 0.25])
-                        with oh2_col:
-                            st.markdown("""
-                            <div style="
-                                background: #f1f5f9;
-                                padding: 8px 16px;
-                                border-radius: 10px 10px 0 0;
-                                font-weight: 700;
-                                color: #475569;
-                                font-size: 0.75em;
-                            ">翻訳 2 (比較)</div>
-                            """, unsafe_allow_html=True)
-                        with ob2_col:
-                             # Copy Button for Translation 2
-                             t_key_2 = f"t_v9_{src_url}_2"
-                             trans_data_2 = st.session_state.get(t_key_2, [])
-                             t2_text_parts = [p.get("text", "") for p in trans_data_2]
-                             t2_title = st.session_state.get(f"t_ttl_v9_{src_url}_2", "")
-                             full_trans_2 = f"# {t2_title}\n\n" + "\n\n".join(t2_text_parts)
-                             st_copy_to_clipboard(full_trans_2, "📋 コピー", key="copy_trans_2")
+                        # Use unified header
+                        t_key_2 = f"t_v9_{src_url}_2"
+                        trans_data_2 = st.session_state.get(t_key_2, [])
+                        t2_text_parts = [p.get("text", "") for p in trans_data_2]
+                        t2_title = st.session_state.get(f"t_ttl_v9_{src_url}_2", "")
+                        full_trans_2 = f"# {t2_title}\n\n" + "\n\n".join(t2_text_parts)
+                        render_copy_header("翻訳 2 (比較)", full_trans_2, "trans_2")
                         
-                        st.markdown("<div style='margin-bottom: -40px;'></div>", unsafe_allow_html=True)
+                        st.markdown("<div style='margin-bottom: -90px;'></div>", unsafe_allow_html=True)
                         new_engine_2 = st.selectbox(
                             "翻訳エンジン 2",
                             engines,
@@ -1104,6 +1216,11 @@ def main():
                             key="engine_select_2",
                             label_visibility="collapsed"
                         )
+                        
+                        # --- Comparison Progress & Status Area (Moved to Top) ---
+                        st.markdown("<div style='margin-bottom: 5px;'></div>", unsafe_allow_html=True)
+                        status_area_top_2 = st.empty()
+                        progress_area_top_2 = st.empty()
                         
                         if is_fallback_2:
                             if "Failed" in engine_2 and "Fallback" not in engine_2:
@@ -1119,6 +1236,13 @@ def main():
                                 st.error("本文が抽出されていないため、翻訳を実行できません。")
                             else:
                                 st.session_state["engine_2_selected"] = new_engine_2
+                                # Clear old translation state and error banners
+                                st.session_state["v9_error_banner_html"] = None
+                                t_key_2 = f"t_v9_{src_url}_2"
+                                if t_key_2 in st.session_state: del st.session_state[t_key_2]
+                                t_ttl_key_2 = f"t_ttl_v9_{src_url}_2"
+                                if t_ttl_key_2 in st.session_state: del st.session_state[t_ttl_key_2]
+                                
                                 # Defer translation execution
                                 st.session_state["run_translation_2"] = True
                                 st.session_state["pending_engine_2"] = new_engine_2
@@ -1144,9 +1268,9 @@ def main():
                         # 既に翻訳1で使っているエンジンとは別のデフォルトを推奨
                         compare_engines = ["-- 選択してください --", "Google", "DeepL", "MyMemory"] if st.session_state.get("deepl_api_key") else ["-- 選択してください --", "Google", "MyMemory"]
                         if st.session_state.get("gemini_api_key"):
-                            gemini_label = st.session_state.get("gemini_label_current", "Gemini (gemini-3-flash)")
+                            gemini_label = st.session_state.get("gemini_label_current", "Gemini (gemini-2.5-flash)")
                             compare_engines.insert(3 if "DeepL" in compare_engines else 2, gemini_label)
-                        st.markdown("<div style='margin-bottom: -40px;'></div>", unsafe_allow_html=True)
+                        st.markdown("<div style='margin-bottom: -90px;'></div>", unsafe_allow_html=True)
                         selected_compare_engine = st.selectbox(
                             "比較エンジン",
                             compare_engines,
@@ -1154,6 +1278,11 @@ def main():
                             key="engine_select_add_compare",
                             label_visibility="collapsed"
                         )
+                        
+                        # --- Comparison Progress & Status Area (Moved to Top) ---
+                        st.markdown("<div style='margin-bottom: 5px;'></div>", unsafe_allow_html=True)
+                        status_area_top_2 = st.empty()
+                        progress_area_top_2 = st.empty()
                         
                         # エンジンが選択されたら比較翻訳を実行
                         if selected_compare_engine != "-- 選択してください --":
@@ -1268,25 +1397,293 @@ def main():
                     adjustToViewport();
                 }}, 100);
                 setTimeout(syncRowHeights, 500);
-                setTimeout(syncRowHeights, 3000);
-            }})();
-        </script>
     </body>
     </html>
     """
-                # 親側にCSSを注入して、iframe自体の高さを動的に制御する（クロスオリジン対策）
-                st.markdown(f"""
-                <style>
-                    iframe[title="st.components.v1.html"] {{
-                        height: calc(100vh - 300px) !important;
-                        min-height: 400px !important;
-                    }}
-                </style>
-                """, unsafe_allow_html=True)
+                # Render content with Native Streamlit Grid (Row-by-Row)
+                # ... (rest of the rendering code)
+
+                # --- JS Injection for Alignment (Robust Method) ---
+                # We use st.components.v1.html to inject a script that can access the parent DOM.
+                # This is necessary because st.markdown scripts are often sandboxed or run too early.
+                import streamlit.components.v1 as components
+    
+                js_alignment_script = """
+                <script>
+                    function syncRowHeights() {
+                        try {
+                            // Access the main Streamlit document
+                            const doc = window.parent.document;
+                            const blocks = doc.querySelectorAll('.trans-paragraph-block');
                 
-                components.html(html_content, height=1200, scrolling=False)
-        else:
-            st.info("元記事のURLを入力してください。")
+                            if (blocks.length === 0) return;
+                
+                            const rows = {};
+                
+                            // Group by index suffix (e.g., p-src-0, p-trans-0)
+                            blocks.forEach(block => {
+                                const id = block.id;
+                                if (!id) return;
+                                const parts = id.split('-');
+                                const index = parts[parts.length - 1];
+                                if (!rows[index]) rows[index] = [];
+                                rows[index].push(block);
+                            });
+                
+                            // Sync heights
+                            Object.keys(rows).forEach(key => {
+                                const rowBlocks = rows[key];
+                                // Reset to auto to recalculate
+                                rowBlocks.forEach(b => b.style.minHeight = 'auto');
+                    
+                                let maxHeight = 0;
+                                rowBlocks.forEach(b => {
+                                    if (b.offsetHeight > maxHeight) maxHeight = b.offsetHeight;
+                                });
+                    
+                                // Apply max height
+                                if (maxHeight > 0) {
+                                    rowBlocks.forEach(b => {
+                                        b.style.minHeight = maxHeight + 'px';
+                                    });
+                                }
+                            });
+                        } catch (e) {
+                            console.error("SyncRowHeights Error:", e);
+                        }
+                    }
+
+                    // Run periodically and on events
+                    window.addEventListener('load', () => {
+                        syncRowHeights();
+                        setInterval(syncRowHeights, 500); // Check every 500ms for streaming updates
+                    });
+        
+                    window.addEventListener('resize', syncRowHeights);
+                </script>
+                """
+                components.html(js_alignment_script, height=0, width=0)
+                # This restores the "formatted" look by aligning paragraphs and adding style.
+                is_translating_1 = st.session_state.get("run_translation_1", False)
+                is_translating_2 = st.session_state.get("run_translation_2", False)
+    
+                # Retrieve existing translations if available
+                t1_title = st.session_state.get(f"t_ttl_v9_{src_url}", "")
+                t2_title = st.session_state.get(f"t_ttl_v9_{src_url}_2", "")
+    
+                # Prepare lists for streaming placeholders
+                if "t1_placeholders" not in locals() or not isinstance(t1_placeholders, list):
+                    t1_placeholders = []
+                if "t2_placeholders" not in locals() or not isinstance(t2_placeholders, list):
+                    t2_placeholders = []
+    
+    
+                # --- Title Row ---
+                if is_compare_mode:
+                    cols = st.columns(3)
+                else:
+                    cols = st.columns([5, 5, 2])
+    
+                # Original Title
+                with cols[0]:
+                    st.markdown(f"### {src_article.title}")
+                    st.markdown(f"<span style='color:gray'>{src_article.publisher}</span>", unsafe_allow_html=True)
+    
+                # Trans 1 Title
+                with cols[1]:
+                    if is_translating_1:
+                         # Placeholder for title? Or just skip
+                        st.markdown("### 翻訳中...")
+                    elif t1_title:
+                        st.markdown(f"### {t1_title}")
+    
+                # Trans 2 Title / Control
+                with cols[2]:
+                    if is_compare_mode:
+                        if is_translating_2:
+                            st.markdown("### 翻訳中...")
+                        elif t2_title:
+                            st.markdown(f"### {t2_title}")
+                    else:
+                        st.markdown("比較翻訳を追加するには上のドロップダウンを選択してください")
+
+                st.markdown("---")
+
+
+                # --- Paragraph Columns (Column-based Layout) ---
+                # This isolates selection (user can select just original or just translation)
+                # and removes the "card" look for a continuous flow.
+    
+                if is_compare_mode:
+                    row_cols = st.columns(3)
+                else:
+                    row_cols = st.columns([5, 5, 2])
+    
+                # 1. Original Text Column
+                with row_cols[0]:
+                    for i, p in enumerate(src_article.structured_html_parts):
+                        # Clean Text Style
+                        st.markdown(f"""
+                        <div id="p-src-{i}" class="trans-paragraph-block" style="
+                            color: #334155;
+                            font-size: 16px;
+                            background-color: #ffffff;
+                            padding: 16px;
+                            border-radius: 8px;
+                            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+                            margin-bottom: 12px;
+                        ">
+                            {p['text']}
+                        </div>
+                        """, unsafe_allow_html=True)
+
+                # 2. Translation 1 Column
+                with row_cols[1]:
+                    if is_translating_1:
+                        # Create placeholders for each paragraph
+                        for _ in src_article.structured_html_parts:
+                            ph = st.empty()
+                            t1_placeholders.append(ph)
+                            # Initial loading state with correct spacing
+                            ph.markdown(f"<div style='margin-bottom: 24px; color:#ccc'>...</div>", unsafe_allow_html=True)
+                    else:
+                        # Render existing translation
+                        if trans_data:
+                            for i, item in enumerate(trans_data):
+                                t_text = item.get("text", "")
+                                st.markdown(f"""
+                                <div id="p-trans-{i}" class="trans-paragraph-block" style="
+                                    color: #1e293b;
+                                    font-size: 16px;
+                                    background-color: #ffffff;
+                                    padding: 16px;
+                                    border-radius: 8px;
+                                    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+                                    margin-bottom: 12px;
+                                ">
+                                    {t_text}
+                                </div>
+                                """, unsafe_allow_html=True)
+                        else:
+                             # Empty state or mismatched length handling could go here
+                             pass
+
+                # 3. Translation 2 Column
+                with row_cols[2]:
+                    if is_compare_mode:
+                        if is_translating_2:
+                            for _ in src_article.structured_html_parts:
+                                ph = st.empty()
+                                t2_placeholders.append(ph)
+                                ph.markdown(f"<div style='margin-bottom: 24px; color:#ccc'>...</div>", unsafe_allow_html=True)
+                        else:
+                            if trans_data_2:
+                                for i, item in enumerate(trans_data_2):
+                                    t_text_2 = item.get("text", "")
+                                    st.markdown(f"""
+                                    <div id="p-comp-{i}" class="trans-paragraph-block" style="
+                                        color: #1e293b;
+                                        font-size: 16px;
+                                        background-color: #ffffff;
+                                        padding: 16px;
+                                        border-radius: 8px;
+                                        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+                                        margin-bottom: 12px;
+                                    ">
+                                        {t_text_2}
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                    else:
+                        # Placeholder for "Add Compare" prompt is handled in title row, 
+                        # but maybe we want a subtle vertical line or nothing here.
+                        pass
+
+            else:
+                st.info("元記事のURLを入力してください。")
+
+
+    # --- Deferred Execution Blocks (Moved from inside columns) ---
+    # These must be outside the conditionally rendered columns to ensure they always run if flagged.
+    
+    # Translation 1 (Main)
+    if st.session_state.get("run_translation_1"):
+        pending_engine = st.session_state.get("pending_engine_1")
+        pending_model = st.session_state.get("pending_model_1")
+        
+        # Remove flags immediately to prevent re-run loop
+        st.session_state["run_translation_1"] = False
+        st.session_state["v9_error_banner_html"] = None
+        
+        with st.spinner(f"{pending_engine} で翻訳中..."):
+            # Ensure placeholders exist
+            # If t1_placeholders was populated in the loop above, use it.
+            # If for some reason checking triggered without loop (unlikely), fallback.
+            if "t1_placeholders" not in locals() or not t1_placeholders:
+                # If we have no placeholders (e.g. empty details), we can't stream properly row-by-row.
+                # Fallback to single area (legacy safely)
+                t1_placeholders = st.empty()
+            
+            # Execute translation
+            t_key = f"t_v9_{src_url}"
+            st.session_state[t_key] = translate_paragraphs(
+                src_article.structured_html_parts,
+                engine_name=pending_engine,
+                source_lang=source_lang,
+                deepl_api_key=st.session_state.get("deepl_api_key"),
+                gemini_api_key=st.session_state.get("gemini_api_key"),
+                output_placeholder=t1_placeholders, 
+                progress_placeholder=progress_area_top if 'progress_area_top' in locals() else None, 
+                status_placeholder=status_area_top if 'status_area_top' in locals() else None,
+                model_name=pending_model,
+                item_id_prefix="p-trans"
+            )
+            
+            # Title translation
+            st.session_state[f"t_ttl_v9_{src_url}"] = translate_paragraphs(
+                [{"tag": "h1", "text": src_article.title}],
+                engine_name=pending_engine,
+                source_lang=source_lang,
+                deepl_api_key=st.session_state.get("deepl_api_key"),
+                gemini_api_key=st.session_state.get("gemini_api_key")
+            )[0]["text"]
+            
+        st.rerun()
+
+    # Translation 2 (Compare)
+    if st.session_state.get("run_translation_2"):
+        pending_engine = st.session_state.get("pending_engine_2")
+        pending_model = st.session_state.get("pending_model_2")
+        
+        st.session_state["run_translation_2"] = False
+        st.session_state["v9_error_banner_html"] = None
+        
+        with st.spinner(f"{pending_engine} で比較翻訳中..."):
+            if "t2_placeholders" not in locals() or not t2_placeholders:
+                t2_placeholders = st.empty()
+            
+            t_key_2 = f"t_v9_{src_url}_2"
+            st.session_state[t_key_2] = translate_paragraphs(
+                src_article.structured_html_parts,
+                engine_name=pending_engine,
+                source_lang=source_lang,
+                deepl_api_key=st.session_state.get("deepl_api_key"),
+                gemini_api_key=st.session_state.get("gemini_api_key"),
+                output_placeholder=t2_placeholders,
+                progress_placeholder=progress_area_top_2 if 'progress_area_top_2' in locals() else None, 
+                status_placeholder=status_area_top_2 if 'status_area_top_2' in locals() else None,
+                model_name=pending_model,
+                item_id_prefix="p-comp"
+            )
+            
+            st.session_state[f"t_ttl_v9_{src_url}_2"] = translate_paragraphs(
+                [{"tag": "h1", "text": src_article.title}],
+                engine_name=pending_engine,
+                source_lang=source_lang,
+                deepl_api_key=st.session_state.get("deepl_api_key"),
+                gemini_api_key=st.session_state.get("gemini_api_key")
+            )[0]["text"]
+            
+        st.rerun()
 
     # --- タブ2: 画像読込 ---
     with tabs[1]:
@@ -1390,7 +1787,7 @@ def main():
                         single_idx = current_sel_indices[0]
                         img_b64_single, _, img_fmt_single = fetch_image_data_v10(single_url, base_url)
                         if img_b64_single:
-                            import base64
+                            # Simplified: use global base64
                             try:
                                 b64_data = img_b64_single.split(",", 1)[1]
                                 img_bytes_single = base64.b64decode(b64_data)
@@ -1458,15 +1855,13 @@ def main():
                                 h_c1, h_c2, h_c3 = st.columns([2.5, 2.5, 5])
                                 
                                 with h_c1:
-                                    # Styled Checkbox Toggle Button
-                                    if is_selected:
-                                        btn_label = "✓ 選択中"
-                                        btn_type = "primary"
-                                    else:
-                                        btn_label = "○ 選択"
-                                        btn_type = "secondary"
+                                    # Styled Checkbox Toggle Button (Modern Icon)
+                                    select_class = "img-btn-select selected" if is_selected else "img-btn-select"
                                     
-                                    if st.button(btn_label, key=f"btn_card_{abs_idx}", type=btn_type, use_container_width=True):
+                                    # Use st.markdown to wrap button
+                                    st.markdown(f'<div class="{select_class}">', unsafe_allow_html=True)
+                                    # Use Zero Width Space as label to hide text but keep clickable area
+                                    if st.button("\u200b", key=f"btn_card_{abs_idx}", help="選択/解除"):
                                         if is_selected:
                                             st.session_state.sel_imgs.discard(abs_idx)
                                             st.session_state[f"img_chk_v9_{abs_idx}"] = False
@@ -1476,6 +1871,7 @@ def main():
                                             st.session_state[f"img_chk_v9_{abs_idx}"] = True
                                             st.session_state[f"chk_v9_{abs_idx}"] = True
                                         st.rerun()
+                                    st.markdown('</div>', unsafe_allow_html=True)
 
                                 with h_c2:
                                     # Save (Download) Button - Individual Download
@@ -1503,7 +1899,7 @@ def main():
                                         """, unsafe_allow_html=True)
                                     elif img_b64:
                                         # Not saved yet - show download button
-                                        import base64
+                                        # Simplified: use global base64
                                         try:
                                             b64_data = img_b64.split(",", 1)[1]
                                             img_bytes = base64.b64decode(b64_data)
@@ -1515,16 +1911,18 @@ def main():
                                             def mark_saved(key):
                                                 st.session_state[key] = True
                                             
+                                            st.markdown('<div class="img-btn-save">', unsafe_allow_html=True)
                                             st.download_button(
-                                                label="保存",
+                                                label="\u200b",
                                                 data=img_bytes,
                                                 file_name=f"image_{abs_idx + 1}.{ext}",
                                                 mime=f"image/{img_fmt.lower() if img_fmt else 'jpeg'}",
                                                 key=f"dl_single_{abs_idx}",
-                                                use_container_width=True,
+                                                help="ダウンロード (保存)",
                                                 on_click=mark_saved,
                                                 args=(saved_key,)
                                             )
+                                            st.markdown('</div>', unsafe_allow_html=True)
                                         except:
                                             st.button("保存", key=f"dl_err_{abs_idx}", disabled=True, use_container_width=True)
                                     else:
