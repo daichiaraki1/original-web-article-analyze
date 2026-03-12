@@ -486,29 +486,29 @@ def main():
         }}
 
         /* OCR Result Card Styles */
-        .ocr-result-card {
+        .ocr-result-card {{
             background: #ffffff;
             border: 1px solid #e2e8f0;
             border-radius: 12px;
             padding: 16px;
             margin-bottom: 16px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-        }
-        .ocr-label {
+        }}
+        .ocr-label {{
             font-size: 0.75rem;
             font-weight: 700;
             color: #64748b;
             text-transform: uppercase;
             letter-spacing: 0.05em;
             margin-bottom: 8px;
-        }
-        .ocr-text {
+        }}
+        .ocr-text {{
             font-size: 1rem;
             line-height: 1.6;
             color: #1e293b;
             margin-bottom: 12px;
             white-space: pre-wrap;
-        }
+        }}
     </style>
     """, unsafe_allow_html=True)
 
