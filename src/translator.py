@@ -214,6 +214,53 @@ def _translate_chunk(text: str, engine_name: str, source_lang: str, deepl_api_ke
     return text, "None"
 
 
+def ocr_and_translate_image(image_bytes: bytes, mime_type: str, gemini_api_key: str, model_name: str = "gemini-2.0-flash") -> dict:
+    """
+    OCR and translate an image using Gemini.
+    Returns: {"original_text": str, "translated_text": str, "error": str}
+    """
+    if not gemini_api_key:
+        return {"error": "Gemini API Key is required for OCR."}
+
+    try:
+        genai.configure(api_key=gemini_api_key)
+        model = genai.GenerativeModel(model_name)
+
+        prompt = """
+        Please transcribe the text in this image (likely Chinese) and translate it into natural Japanese.
+        Format your response as a JSON object with the following keys:
+        - "original": The transcribed Chinese text.
+        - "translated": The Japanese translation.
+        Do not add any other text outside the JSON.
+        """
+
+        response = model.generate_content([
+            prompt,
+            {"mime_type": mime_type, "data": image_bytes}
+        ])
+
+        if not response.text:
+            return {"error": "Gemini returned an empty response."}
+
+        # Extract JSON from response
+        text = response.text.strip()
+        # Handle cases where Gemini might wrap JSON in code blocks
+        if "```json" in text:
+            text = text.split("```json")[1].split("```")[0].strip()
+        elif "```" in text:
+            text = text.split("```")[1].split("```")[0].strip()
+
+        data = json.loads(text)
+        return {
+            "original_text": data.get("original", ""),
+            "translated_text": data.get("translated", ""),
+            "error": None
+        }
+
+    except Exception as e:
+        return {"error": str(e)}
+
+
 def get_available_models(api_key: str):
     """
     List available Gemini models for the provided API key.

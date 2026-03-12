@@ -9,7 +9,8 @@ import importlib
 if 'src.translator' in sys.modules:
     importlib.reload(sys.modules['src.translator'])
 
-from src.translator import translate_paragraphs, get_deepl_usage, render_deepl_usage_ui, get_available_models
+from src.translator import translate_paragraphs, get_deepl_usage, render_deepl_usage_ui, get_available_models, ocr_and_translate_image
+from src.article_generator import generate_article
 from st_copy_to_clipboard import st_copy_to_clipboard
 from src.utils import create_images_zip, fetch_image_data_v10, make_diff_html, detect_language
 
@@ -483,6 +484,31 @@ def main():
             font-size: 10px; color: #94a3b8; background: #f1f5f9; 
             padding: 3px 8px; border-radius: 6px; display: inline-block; margin-bottom: 8px; font-weight: 600;
         }}
+
+        /* OCR Result Card Styles */
+        .ocr-result-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+        .ocr-label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 8px;
+        }
+        .ocr-text {
+            font-size: 1rem;
+            line-height: 1.6;
+            color: #1e293b;
+            margin-bottom: 12px;
+            white-space: pre-wrap;
+        }
     </style>
     """, unsafe_allow_html=True)
 
@@ -673,6 +699,8 @@ def main():
                                 del st.session_state["deepl_usage_cache"]
                             
                             st.session_state["deepl_key_saved_success"] = True
+                            import time
+                            time.sleep(0.5) # Wait for cookie to be set before rerun
                             st.rerun()
                     else:
                         # If key is saved and unchanged, show nothing or just text
@@ -1134,7 +1162,7 @@ def main():
                 if is_compare_mode:
                     hdr_col1, hdr_col2, hdr_col3 = st.columns(3)
                 else:
-                    hdr_col1, hdr_col2, hdr_col3 = st.columns([5, 5, 2])
+                    hdr_col1, hdr_col2, hdr_col3 = st.columns([4, 4, 4])
                 
                 with hdr_col1:
                     # Use unified header
@@ -1271,49 +1299,53 @@ def main():
                         if "engine_2_selected" not in st.session_state:
                             st.session_state["engine_2_selected"] = engine_2
                 else:
-                    # 比較モードでない場合：比較翻訳追加セレクター
+                    # 比較モードでない場合：記事生成セクション
                     with hdr_col3:
+                        gen_key = f"gen_article_{src_url}"
+                        has_gemini_key = bool(st.session_state.get("gemini_api_key"))
+                        
+                        # Header
                         st.markdown("""
                         <div style="
-                            background: #f1f5f9;
-                            padding: 8px 16px;
+                            display: flex;
+                            align-items: center;
+                            gap: 8px;
+                            padding: 6px 12px;
                             border-radius: 10px 10px 0 0;
-                            font-weight: 700;
-                            color: #475569;
-                            font-size: 0.75em;
-                        ">比較翻訳を追加</div>
+                            background: linear-gradient(135deg, #eff6ff, #f0f9ff);
+                        ">
+                            <span style="font-size: 1.2em;">✍️</span>
+                            <div>
+                                <div style="font-weight: 700; font-size: 0.85em; color: #1e40af;">Shenzhen Fan 記事生成</div>
+                                <div style="font-size: 0.7em; color: #64748b;">原文からプロパガンダ表現を除去し再構成</div>
+                            </div>
+                        </div>
                         """, unsafe_allow_html=True)
                         
-                        # 既に翻訳1で使っているエンジンとは別のデフォルトを推奨
-                        compare_engines = ["-- 選択してください --", "Google", "DeepL", "MyMemory"] if st.session_state.get("deepl_api_key") else ["-- 選択してください --", "Google", "MyMemory"]
-                        if st.session_state.get("gemini_api_key"):
-                            gemini_label = st.session_state.get("gemini_label_current", "Gemini (gemini-2.5-flash)")
-                            compare_engines.insert(3 if "DeepL" in compare_engines else 2, gemini_label)
-                        st.markdown("<div style='margin-bottom: -90px;'></div>", unsafe_allow_html=True)
-                        selected_compare_engine = st.selectbox(
-                            "比較エンジン",
-                            compare_engines,
-                            index=0,
-                            key="engine_select_add_compare",
-                            label_visibility="collapsed"
-                        )
+                        # Show existing result header or generate button
+                        if gen_key in st.session_state and st.session_state[gen_key]:
+                            generated_text = st.session_state[gen_key]
+                            render_copy_header("生成された記事", generated_text, "gen_article")
+                            if st.button("🔄 再生成", key="regenerate_article", disabled=not has_gemini_key, use_container_width=True):
+                                del st.session_state[gen_key]
+                                st.rerun()
+                        else:
+                            if not has_gemini_key:
+                                st.warning("Gemini APIキーを設定してください")
+                            
+                            if st.button(
+                                "✍️ 記事を生成する",
+                                key="generate_article_btn",
+                                type="primary",
+                                disabled=not has_gemini_key,
+                                use_container_width=True,
+                            ):
+                                # Defer article generation (same pattern as translation)
+                                st.session_state["run_article_gen"] = True
                         
-                        # --- Comparison Progress & Status Area (Moved to Top) ---
-                        st.markdown("<div style='margin-bottom: 5px;'></div>", unsafe_allow_html=True)
+                        # Status/progress area for comparison (keep for potential future use)
                         status_area_top_2 = st.empty()
                         progress_area_top_2 = st.empty()
-                        
-                        # エンジンが選択されたら比較翻訳を実行
-                        if selected_compare_engine != "-- 選択してください --":
-                            if not src_article.structured_html_parts:
-                                st.error("本文が抽出されていないため、翻訳を実行できません。")
-                            else:
-                                # Defer translation execution
-                                st.session_state["run_translation_2"] = True
-                                st.session_state["pending_engine_2"] = selected_compare_engine
-                                st.session_state["pending_model_2"] = st.session_state.get("gemini_model_setting", "gemini-2.5-flash")
-                                st.session_state["show_comparison_view"] = True
-                                # REMOVED st.rerun()
                 
                 # Empty header_html since we're using Streamlit components above
                 header_html = ""
@@ -1400,7 +1432,7 @@ def main():
                 if is_compare_mode:
                     cols = st.columns(3)
                 else:
-                    cols = st.columns([5, 5, 2])
+                    cols = st.columns([4, 4, 4])
                 
                 # Title Styling
                 title_style = """
@@ -1524,7 +1556,12 @@ def main():
                         elif t2_title:
                             st.markdown(f"### {t2_title}")
                     else:
-                        st.markdown("比較翻訳を追加するには上のドロップダウンを選択してください")
+                        # Generated article title
+                        gen_key = f"gen_article_{src_url}"
+                        if gen_key in st.session_state and st.session_state[gen_key]:
+                            st.markdown("### ✍️ 生成記事")
+                        else:
+                            st.markdown("")
 
                 st.markdown("---")
 
@@ -1536,7 +1573,7 @@ def main():
                 if is_compare_mode:
                     row_cols = st.columns(3)
                 else:
-                    row_cols = st.columns([5, 5, 2])
+                    row_cols = st.columns([4, 4, 4])
     
                 # 1. Original Text Column
                 with row_cols[0]:
@@ -1613,9 +1650,65 @@ def main():
                                     </div>
                                     """, unsafe_allow_html=True)
                     else:
-                        # Placeholder for "Add Compare" prompt is handled in title row, 
-                        # but maybe we want a subtle vertical line or nothing here.
-                        pass
+                        # Generated article content or placeholder
+                        gen_key = f"gen_article_{src_url}"
+                        if gen_key in st.session_state and st.session_state[gen_key]:
+                            from src.article_generator import _format_article_html
+                            generated_text = st.session_state[gen_key]
+                            st.markdown(f"""
+                            <div style="
+                                color: #1e293b;
+                                line-height: 2.0;
+                                font-size: 15px;
+                                padding: 20px 24px;
+                                background: #ffffff;
+                                border: 1px solid #e2e8f0;
+                                border-radius: 12px;
+                            ">{_format_article_html(generated_text)}</div>
+                            """, unsafe_allow_html=True)
+                        elif st.session_state.get("run_article_gen"):
+                            # Placeholder while generating
+                            gen_output_placeholder = st.empty()
+                            gen_output_placeholder.markdown("""
+                            <div style="
+                                color: #64748b;
+                                font-size: 0.9em;
+                                padding: 40px 16px;
+                                background: #f8fafc;
+                                border: 1px solid #e2e8f0;
+                                border-radius: 12px;
+                                text-align: center;
+                                min-height: 200px;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                            ">
+                                <div>
+                                    <div style="font-size: 2em; margin-bottom: 12px;">⏳</div>
+                                    <div>Geminiで記事を生成中...</div>
+                                </div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        else:
+                            st.markdown("""
+                            <div style="
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                min-height: 200px;
+                                color: #94a3b8;
+                                background: #f8fafc;
+                                border: 1px dashed #e2e8f0;
+                                border-radius: 12px;
+                                text-align: center;
+                                font-size: 0.85em;
+                            ">
+                                <div>
+                                    <div style="font-size: 2em; margin-bottom: 8px;">✍️</div>
+                                    <div>上の「記事を生成する」ボタン<br>をクリックして記事を生成</div>
+                                </div>
+                            </div>
+                            """, unsafe_allow_html=True)
 
             else:
                 st.info("元記事のURLを入力してください。")
@@ -1704,6 +1797,37 @@ def main():
             
         st.rerun()
 
+    # Article Generation (Deferred)
+    if st.session_state.get("run_article_gen"):
+        st.session_state["run_article_gen"] = False
+        
+        gen_key = f"gen_article_{src_url}"
+        model_name = st.session_state.get("gemini_model_setting", "gemini-2.5-flash")
+        
+        # Use the placeholder if it exists, otherwise create one
+        gen_placeholder = gen_output_placeholder if 'gen_output_placeholder' in locals() else st.empty()
+        
+        # Prepare source text
+        chinese_text = "\n\n".join(
+            [p["text"] for p in src_article.structured_html_parts]
+        )
+        
+        # Generate article
+        result = generate_article(
+            chinese_text=chinese_text,
+            gemini_api_key=st.session_state.get("gemini_api_key", ""),
+            model_name=model_name,
+            article_title=src_article.title if 'src_article' in locals() else "",
+            publisher=src_article.publisher if 'src_article' in locals() else "",
+            output_placeholder=gen_placeholder,
+        )
+        
+        # Save to session state
+        if result and not result.startswith("[エラー]"):
+            st.session_state[gen_key] = result
+        
+        st.rerun()
+
     # --- タブ2: 画像読込 ---
     with tabs[1]:
         # 画像読込タブ専用のセッション状態キー
@@ -1767,7 +1891,7 @@ def main():
                 """, unsafe_allow_html=True)
                 
                 # 操作ボタン群（コンパクトなgap）
-                col1, col2, col_sep, col3 = st.columns([1.2, 1.2, 0.3, 2.3], gap="small")
+                col1, col2, col_ocr, col_sep, col3 = st.columns([1.2, 1.2, 1.8, 0.3, 2.3], gap="small")
                 
                 with col1:
                     if st.button("全選択", key="all_v9", use_container_width=True):
@@ -1784,7 +1908,52 @@ def main():
                             st.session_state[f"chk_v9_{i}"] = False
                             st.session_state.sel_imgs.discard(i)
                         st.rerun()
-                
+
+                with col_ocr:
+                    # Determine Gemini model
+                    gemini_model = st.session_state.get("gemini_model_setting", "gemini-2.0-flash")
+                    gemini_key = st.session_state.get("gemini_api_key")
+                    
+                    # 選択状態をウィジェットの状態から直接再計算
+                    current_sel_indices = [
+                        i for i in range(len(image_urls))
+                        if st.session_state.get(f"chk_v9_{i}", False)
+                    ]
+                    
+                    if st.button("OCR翻訳", key="ocr_btn_v9", use_container_width=True, type="primary", disabled=not (gemini_key and current_sel_indices)):
+                        if not gemini_key:
+                            st.error("Gemini APIキーを設定してください。")
+                        else:
+                            ocr_results = st.session_state.get("ocr_results_v9", {})
+                            progress_text = st.empty()
+                            progress_bar = st.progress(0)
+                            
+                            for idx, abs_idx in enumerate(current_sel_indices):
+                                progress_text.text(f"画像 {idx+1}/{len(current_sel_indices)} を処理中...")
+                                progress_bar.progress((idx + 1) / len(current_sel_indices))
+                                
+                                img_url = image_urls[abs_idx]
+                                img_b64, _, _ = fetch_image_data_v10(img_url, base_url)
+                                
+                                if img_b64:
+                                    try:
+                                        mime_type = img_b64.split(";")[0].split(":")[1]
+                                        b64_data = img_b64.split(",")[1]
+                                        image_bytes = base64.b64decode(b64_data)
+                                        
+                                        res = ocr_and_translate_image(image_bytes, mime_type, gemini_key, gemini_model)
+                                        if not res.get("error"):
+                                            ocr_results[abs_idx] = res
+                                        else:
+                                            st.error(f"画像 {abs_idx+1} の処理中にエラーが発生しました: {res['error']}")
+                                    except Exception as e:
+                                        st.error(f"画像 {abs_idx+1} の解析に失敗しました: {e}")
+                            
+                            st.session_state["ocr_results_v9"] = ocr_results
+                            progress_text.empty()
+                            progress_bar.empty()
+                            st.rerun()
+
                 with col_sep:
                     # 区切り線的なスペース
                     st.markdown("<div style='border-left: 2px solid #e2e8f0; height: 38px; margin: 0 auto;'></div>", unsafe_allow_html=True)
@@ -1989,6 +2158,20 @@ def main():
                                         <div style="font-size: 1.5em;">❌</div>
                                     </div>
                                     ''', unsafe_allow_html=True)
+                                
+                                # 5. OCR Results Display
+                                ocr_results = st.session_state.get("ocr_results_v9", {})
+                                if abs_idx in ocr_results:
+                                    res = ocr_results[abs_idx]
+                                    st.markdown(f"""
+                                    <div class="ocr-result-card" style="margin-top: 12px;">
+                                        <div class="ocr-label">原文 ( transciption )</div>
+                                        <div class="ocr-text">{res['original_text']}</div>
+                                        <div style="border-top: 1px solid #f1f5f9; margin: 8px 0;"></div>
+                                        <div class="ocr-label">翻訳 ( Japanese )</div>
+                                        <div class="ocr-text" style="color: #2563eb; font-weight: 500;">{res['translated_text']}</div>
+                                    </div>
+                                    """, unsafe_allow_html=True)
             else:
                 # 画像がまだ読み込まれていない場合のメッセージ
                 st.markdown("""
